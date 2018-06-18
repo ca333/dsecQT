@@ -24,6 +24,7 @@
 #include "asyncrpcoperation.h"
 #include "asyncrpcqueue.h"
 #include "wallet/asyncrpcoperation_sendmany.h"
+#include "coincontrol.h"
 
 #include "sodium.h"
 
@@ -105,8 +106,8 @@ void WalletTxToJSON(const CWalletTx& wtx, UniValue& entry)
 string AccountFromValue(const UniValue& value)
 {
     string strAccount = value.get_str();
-    if (strAccount != "")
-        throw JSONRPCError(RPC_WALLET_ACCOUNTS_UNSUPPORTED, "Accounts are unsupported");
+    //if (strAccount != "")
+    //    throw JSONRPCError(RPC_WALLET_ACCOUNTS_UNSUPPORTED, "Accounts are unsupported");
     return strAccount;
 }
 
@@ -369,7 +370,7 @@ UniValue getaddressesbyaccount(const UniValue& params, bool fHelp)
     return ret;
 }
 
-static void SendMoney(const CTxDestination &address, CAmount nValue, bool fSubtractFeeFromAmount, CWalletTx& wtxNew,uint8_t *opretbuf,int32_t opretlen,long int opretValue)
+static void SendMoney(const CTxDestination &address, CAmount nValue, bool fSubtractFeeFromAmount, CWalletTx& wtxNew,uint8_t *opretbuf,int32_t opretlen,long int opretValue, const CCoinControl& coin_control)
 {
     CAmount curBalance = pwalletMain->GetBalance();
 
@@ -405,7 +406,7 @@ static void SendMoney(const CTxDestination &address, CAmount nValue, bool fSubtr
         CRecipient opret = { opretpubkey, opretValue, false };
         vecSend.push_back(opret);
     }
-    if (!pwalletMain->CreateTransaction(vecSend, wtxNew, reservekey, nFeeRequired, nChangePosRet, strError)) {
+    if (!pwalletMain->CreateTransaction(vecSend, wtxNew, reservekey, nFeeRequired, nChangePosRet, strError, &coin_control)) {
         if (!fSubtractFeeFromAmount && nValue + nFeeRequired > pwalletMain->GetBalance())
             strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!", FormatMoney(nFeeRequired));
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
@@ -465,12 +466,16 @@ UniValue sendtoaddress(const UniValue& params, bool fHelp)
     if (params.size() > 4)
         fSubtractFeeFromAmount = params[4].get_bool();
 
+    CCoinControl coin_control;
+
     EnsureWalletIsUnlocked();
 
-    SendMoney(address.Get(), nAmount, fSubtractFeeFromAmount, wtx,0,0,0);
+    SendMoney(address.Get(), nAmount, fSubtractFeeFromAmount, wtx,0,0,0, coin_control);
 
     return wtx.GetHash().GetHex();
 }
+
+#include "komodo_defs.h"
 
 #define KOMODO_KVPROTECTED 1
 #define KOMODO_KVBINARY 2
@@ -479,7 +484,8 @@ UniValue sendtoaddress(const UniValue& params, bool fHelp)
 uint64_t PAX_fiatdest(uint64_t *seedp,int32_t tokomodo,char *destaddr,uint8_t pubkey37[37],char *coinaddr,int32_t height,char *base,int64_t fiatoshis);
 int32_t komodo_opreturnscript(uint8_t *script,uint8_t type,uint8_t *opret,int32_t opretlen);
 #define CRYPTO777_KMDADDR "RXL3YXG2ceaB6C5hfJcN4fvmLH2C34knhA"
-extern char ASSETCHAINS_SYMBOL[16];
+extern char ASSETCHAINS_SYMBOL[KOMODO_ASSETCHAIN_MAXLEN];
+extern int32_t KOMODO_PAX;
 int32_t komodo_is_issuer();
 int32_t iguana_rwnum(int32_t rwflag,uint8_t *serialized,int32_t len,void *endianedp);
 int32_t komodo_isrealtime(int32_t *kmdheightp);
@@ -501,6 +507,8 @@ UniValue kvupdate(const UniValue& params, bool fHelp)
         throw runtime_error("kvupdate key value flags/passphrase");
     if (!EnsureWalletIsAvailable(fHelp))
         return 0;
+    if ( ASSETCHAINS_SYMBOL[0] == 0 )
+        return(0);
     haveprivkey = 0;
     memset(&sig,0,sizeof(sig));
     memset(&privkey,0,sizeof(privkey));
@@ -602,7 +610,10 @@ UniValue kvupdate(const UniValue& params, bool fHelp)
         CKomodoAddress destaddress(CRYPTO777_KMDADDR);
         if (!destaddress.IsValid())
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid dest Komodo address");
-        SendMoney(destaddress.Get(),10000,false,wtx,opretbuf,opretlen,fee);
+
+        CCoinControl coin_control;
+
+        SendMoney(destaddress.Get(),10000,false,wtx,opretbuf,opretlen,fee,coin_control);
         ret.push_back(Pair("txid",wtx.GetHash().GetHex()));
     } else ret.push_back(Pair("error",(char *)"null key"));
     return ret;
@@ -612,6 +623,10 @@ UniValue paxdeposit(const UniValue& params, bool fHelp)
 {
     uint64_t available,deposited,issued,withdrawn,approved,redeemed,seed,komodoshis = 0; int32_t height; char destaddr[64]; uint8_t i,pubkey37[33];
     bool fSubtractFeeFromAmount = false;
+    if ( KOMODO_PAX == 0 )
+    {
+        throw runtime_error("paxdeposit disabled without -pax");
+    }
     if ( komodo_is_issuer() != 0 )
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "paxdeposit only from KMD");
     if (!EnsureWalletIsAvailable(fHelp))
@@ -646,7 +661,10 @@ UniValue paxdeposit(const UniValue& params, bool fHelp)
         fee = 10000;
     iguana_rwnum(1,&pubkey37[33],sizeof(height),&height);
     opretlen = komodo_opreturnscript(opretbuf,'D',pubkey37,37);
-    SendMoney(address.Get(),fee,fSubtractFeeFromAmount,wtx,opretbuf,opretlen,komodoshis);
+
+    CCoinControl coin_control;
+
+    SendMoney(address.Get(),fee,fSubtractFeeFromAmount,wtx,opretbuf,opretlen,komodoshis,coin_control);
     return wtx.GetHash().GetHex();
 }
 
@@ -681,7 +699,10 @@ UniValue paxwithdraw(const UniValue& params, bool fHelp)
         fee = 10000;
     iguana_rwnum(1,&pubkey37[33],sizeof(kmdheight),&kmdheight);
     opretlen = komodo_opreturnscript(opretbuf,'W',pubkey37,37);
-    SendMoney(destaddress.Get(),fee,fSubtractFeeFromAmount,wtx,opretbuf,opretlen,fiatoshis);
+
+    CCoinControl coin_control;
+
+    SendMoney(destaddress.Get(),fee,fSubtractFeeFromAmount,wtx,opretbuf,opretlen,fiatoshis,coin_control);
     return wtx.GetHash().GetHex();
 }
 
@@ -1158,7 +1179,9 @@ UniValue sendfrom(const UniValue& params, bool fHelp)
     if (nAmount > nBalance)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Account has insufficient funds");
 
-    SendMoney(address.Get(), nAmount, false, wtx,0,0,0);
+    CCoinControl no_coin_control; // This is a deprecated API
+
+    SendMoney(address.Get(), nAmount, false, wtx,0,0,0, no_coin_control);
 
     return wtx.GetHash().GetHex();
 }
@@ -1222,6 +1245,9 @@ UniValue sendmany(const UniValue& params, bool fHelp)
     if (params.size() > 4)
         subtractFeeFromAmount = params[4].get_array();
 
+
+    CCoinControl coin_control;
+
     set<CKomodoAddress> setAddress;
     vector<CRecipient> vecSend;
 
@@ -1233,8 +1259,8 @@ UniValue sendmany(const UniValue& params, bool fHelp)
         if (!address.IsValid())
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, string("Invalid Komodo address: ")+name_);
 
-        if (setAddress.count(address))
-            throw JSONRPCError(RPC_INVALID_PARAMETER, string("Invalid parameter, duplicated address: ")+name_);
+        //if (setAddress.count(address))
+        //    throw JSONRPCError(RPC_INVALID_PARAMETER, string("Invalid parameter, duplicated address: ")+name_);
         setAddress.insert(address);
 
         CScript scriptPubKey = GetScriptForDestination(address.Get());
@@ -1257,7 +1283,8 @@ UniValue sendmany(const UniValue& params, bool fHelp)
     EnsureWalletIsUnlocked();
 
     // Check funds
-    CAmount nBalance = GetAccountBalance(strAccount, nMinDepth, ISMINE_SPENDABLE);
+    CAmount nBalance = pwalletMain->GetBalance();
+    //CAmount nBalance = GetAccountBalance(strAccount, nMinDepth, ISMINE_SPENDABLE);
     if (totalAmount > nBalance)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Account has insufficient funds");
 
@@ -1266,7 +1293,7 @@ UniValue sendmany(const UniValue& params, bool fHelp)
     CAmount nFeeRequired = 0;
     int nChangePosRet = -1;
     string strFailReason;
-    bool fCreated = pwalletMain->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, nChangePosRet, strFailReason);
+    bool fCreated = pwalletMain->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, nChangePosRet, strFailReason, &coin_control);
     if (!fCreated)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, strFailReason);
     if (!pwalletMain->CommitTransaction(wtx, keyChange))
@@ -1567,7 +1594,11 @@ void ListTransactions(const CWalletTx& wtx, const string& strAccount, int nMinDe
             entry.push_back(Pair("fee", ValueFromAmount(-nFee)));
             if (fLong)
                 WalletTxToJSON(wtx, entry);
+#ifdef __APPLE__
+            entry.push_back(Pair("size", (uint64_t)static_cast<CTransaction>(wtx).GetSerializeSize(SER_NETWORK, PROTOCOL_VERSION)));
+#else
             entry.push_back(Pair("size", static_cast<CTransaction>(wtx).GetSerializeSize(SER_NETWORK, PROTOCOL_VERSION)));
+#endif
             ret.push_back(entry);
         }
     }
@@ -1604,7 +1635,11 @@ void ListTransactions(const CWalletTx& wtx, const string& strAccount, int nMinDe
                 entry.push_back(Pair("vout", r.vout));
                 if (fLong)
                     WalletTxToJSON(wtx, entry);
-                entry.push_back(Pair("size", static_cast<CTransaction>(wtx).GetSerializeSize(SER_NETWORK, PROTOCOL_VERSION)));
+#ifdef __APPLE__
+                    entry.push_back(Pair("size", (uint64_t)static_cast<CTransaction>(wtx).GetSerializeSize(SER_NETWORK, PROTOCOL_VERSION)));
+#else
+                    entry.push_back(Pair("size", static_cast<CTransaction>(wtx).GetSerializeSize(SER_NETWORK, PROTOCOL_VERSION)));
+#endif
                 ret.push_back(entry);
             }
         }
@@ -3201,8 +3236,13 @@ UniValue z_getnewaddress(const UniValue& params, bool fHelp)
 
     EnsureWalletIsUnlocked();
 
+    string strAccount = AccountFromValue("");
+
     CZCPaymentAddress pubaddr = pwalletMain->GenerateNewZKey();
     std::string result = pubaddr.ToString();
+
+    pwalletMain->SetZAddressBook(pubaddr.Get(), strAccount, "receive");
+
     return result;
 }
 

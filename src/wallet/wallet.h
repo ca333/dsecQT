@@ -174,7 +174,7 @@ public:
     // Transaction hash
     uint256 hash;
     // Index into CTransaction.vjoinsplit
-#ifdef __APPLE__
+#ifdef __LP64__
     uint64_t js;
 #else
     size_t js;
@@ -618,7 +618,7 @@ public:
 class CWallet : public CCryptoKeyStore, public CValidationInterface
 {
 private:
-    bool SelectCoins(const CAmount& nTargetValue, std::set<std::pair<const CWalletTx*,unsigned int> >& setCoinsRet, CAmount& nValueRet, bool& fOnlyCoinbaseCoinsRet, bool& fNeedCoinbaseCoinsRet, const CCoinControl *coinControl = NULL,uint64_t *interestp = NULL) const;
+    bool SelectCoins(const CAmount& nTargetValue, std::set<std::pair<const CWalletTx*,unsigned int> >& setCoinsRet, CAmount& nValueRet, bool& fOnlyCoinbaseCoinsRet, bool& fNeedCoinbaseCoinsRet, const CCoinControl *coinControl = NULL) const;
 
     CWalletDB *pwalletdbEncryption;
 
@@ -844,6 +844,7 @@ public:
     std::map<uint256, int> mapRequestCount;
 
     std::map<CTxDestination, CAddressBookData> mapAddressBook;
+    std::map<libzcash::PaymentAddress, CAddressBookData> mapZAddressBook;
 
     CPubKey vchDefaultKey;
 
@@ -867,7 +868,7 @@ public:
      */
     const CTxOut& FindNonChangeParentOutput(const CWalletTx& tx, int output) const;
 
-    bool SelectCoinsMinConf(const CAmount& nTargetValue, int nConfMine, int nConfTheirs, std::vector<COutput> vCoins, std::set<std::pair<const CWalletTx*,unsigned int> >& setCoinsRet, CAmount& nValueRet,uint64_t *interestp) const;
+    bool SelectCoinsMinConf(const CAmount& nTargetValue, int nConfMine, int nConfTheirs, std::vector<COutput> vCoins, std::set<std::pair<const CWalletTx*,unsigned int> >& setCoinsRet, CAmount& nValueRet) const;
 
     bool IsSpent(const uint256& hash, unsigned int n) const;
     bool IsSpent(const uint256& nullifier) const;
@@ -1033,8 +1034,10 @@ public:
     DBErrors ZapWalletTx(std::vector<CWalletTx>& vWtx);
 
     bool SetAddressBook(const CTxDestination& address, const std::string& strName, const std::string& purpose);
+    bool SetZAddressBook(const libzcash::PaymentAddress& address, const std::string& strName, const std::string& purpose);
 
     bool DelAddressBook(const CTxDestination& address);
+    bool DelZAddressBook(const libzcash::PaymentAddress& address);
 
     void UpdatedTransaction(const uint256 &hashTx);
 
@@ -1082,6 +1085,11 @@ public:
             &address, const std::string &label, bool isMine,
             const std::string &purpose,
             ChangeType status)> NotifyAddressBookChanged;
+
+    boost::signals2::signal<void (CWallet *wallet, const libzcash::PaymentAddress
+            &address, const std::string &label, bool isMine,
+            const std::string &purpose,
+            ChangeType status)> NotifyZAddressBookChanged;
 
     /** 
      * Wallet transaction added, removed or updated.
