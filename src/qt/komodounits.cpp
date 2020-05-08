@@ -1,14 +1,16 @@
-// Copyright (c) 2011-2016 The Komodo Core developers
+// Copyright (c) 2011-2016 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "komodounits.h"
+#include "komodo_defs.h"
 
 #include "primitives/transaction.h"
 
 #include <QStringList>
 
-extern char ASSETCHAINS_SYMBOL[16];
+#define KOMODO_ASSETCHAIN_MAXLEN 65
+extern char ASSETCHAINS_SYMBOL[KOMODO_ASSETCHAIN_MAXLEN];
 
 KomodoUnits::KomodoUnits(QObject *parent):
         QAbstractListModel(parent),

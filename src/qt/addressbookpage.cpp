@@ -1,4 +1,4 @@
-// Copyright (c) 2011-2016 The Komodo Core developers
+// Copyright (c) 2011-2016 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -135,11 +135,12 @@ void AddressBookPage::setModel(AddressTableModel *_model)
     }
     ui->tableView->setModel(proxyModel);
     ui->tableView->setSortingEnabled(true);
-    ui->tableView->sortByColumn(2, Qt::AscendingOrder);
+    ui->tableView->sortByColumn(3, Qt::AscendingOrder);
 
     ui->tableView->setColumnWidth(AddressTableModel::isMine, 75);
     ui->tableView->setColumnWidth(AddressTableModel::isWatchOnly, 75);
-    ui->tableView->setColumnWidth(AddressTableModel::Label, 280);
+    ui->tableView->setColumnWidth(AddressTableModel::Balance, 80);
+    ui->tableView->setColumnWidth(AddressTableModel::Label, 200);
 
     // Set column widths
 #if QT_VERSION < 0x050000

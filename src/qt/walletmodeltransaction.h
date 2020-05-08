@@ -1,4 +1,4 @@
-// Copyright (c) 2011-2014 The Komodo Core developers
+// Copyright (c) 2011-2014 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -6,6 +6,7 @@
 #define KOMODO_QT_WALLETMODELTRANSACTION_H
 
 #include "walletmodel.h"
+#include "amount.h"
 
 #include <QObject>
 

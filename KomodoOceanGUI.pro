@@ -2,7 +2,7 @@ TEMPLATE = app
 TARGET = KomodoOceanGUI
 VERSION = 0.1.0.0
 
-INCLUDEPATH += src src\qt src\libsnark src\protobuf src\secp256k1 src\secp256k1\include src\leveldb\include src\leveldb\helpers\memenv src\leveldb src\univalue\include src\libevent\include src\libevent\compat
+INCLUDEPATH += src src\qt src\libsnark src\protobuf src\secp256k1 src\secp256k1\include src\leveldb\include src\leveldb\helpers\memenv src\leveldb src\univalue\include src\libevent\include src\libevent\compat src\cryptoconditions\include src\cryptoconditions src\cryptoconditions\src\asn
 
 MINIUPNPC_INCLUDE_PATH = src\miniupnpc
 
@@ -15,16 +15,17 @@ windows:INCLUDEPATH += depends\openssl-1.1.0f-vs2015\include64 depends\openssl\c
 
 windows:BOOST_LIB_PATH = depends\boost_1_65_1\lib64-msvc-14.0
 windows:OPENSSL_LIB_PATH = depends\openssl-1.1.0f-vs2015\lib64
+windows:RUST_LIB_PATH = depends\librustzcash-master\target
 
 QT_VERSION = 0x050902
 QT += network widgets
 
-DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0 ENABLE_WALLET ENABLE_MINING
+DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0 ENABLE_WALLET ENABLE_MINING ENABLE_BIP70
 DEFINES += BOOST_THREAD_USE_LIB BOOST_HAS_PTHREADS
 DEFINES += _TIMESPEC_DEFINED BINARY_OUTPUT MONTGOMERY_OUTPUT NO_PT_COMPRESSION
 DEFINES += MULTICORE NO_PROCPS NO_GTEST NO_DOCS STATIC NO_SUPERCOP
 DEFINES += _AMD64_ _MT __STDC_FORMAT_MACROS __amd64__ __x86_64__ HAVE_WORKING_BOOST_SLEEP_FOR
-DEFINES += HAVE_CONFIG_H HAVE_DECL_STRNLEN
+DEFINES += HAVE_CONFIG_H HAVE_DECL_STRNLEN ENABLE_MODULE_ECDH ENABLE_MODULE_RECOVERY
 DEFINES += CURVE_ALT_BN128 _REENTRANT __USE_MINGW_ANSI_STDIO=1 LEVELDB_ATOMIC_PRESENT
 
 windows:DEFINES += _WINDOWS 
@@ -144,13 +145,17 @@ HEADERS += src\komodo_globals.h \
      src\qt\komodooceangui.h \
      src\qt\transactiontablemodel.h \
      src\qt\addresstablemodel.h \
+     src\qt\zaddresstablemodel.h \
      src\qt\optionsdialog.h \
      src\qt\coincontroldialog.h \
      src\qt\coincontroltreewidget.h \
      src\qt\sendcoinsdialog.h \
+     src\qt\zsendcoinsdialog.h \
      src\qt\addressbookpage.h \
+     src\qt\zaddressbookpage.h \
      src\qt\signverifymessagedialog.h \
      src\qt\editaddressdialog.h \
+     src\qt\editzaddressdialog.h \
      src\qt\komodoaddressvalidator.h \
      src\qt\clientmodel.h \
      src\qt\guiutil.h \
@@ -186,7 +191,9 @@ HEADERS += src\komodo_globals.h \
      src\qt\receiverequestdialog.h \
      src\streams.h \
      src\komodo_komodod.h \
-     src\komodo_utils.h
+     src\komodo_utils.h \
+     src\komodo_notary.h \
+     src\komodo_gateway.h
 
 SOURCES += src\protobuf\google\protobuf\any.cc \
     src\protobuf\google\protobuf\arena.cc \
@@ -244,22 +251,26 @@ SOURCES += src\protobuf\google\protobuf\any.cc \
     src\compressor.cpp \
     src\core_read.cpp \
     src\core_write.cpp \
+    src\crosschain.cpp \
     src\crypto\equihash.cpp \
+    src\crypto\haraka.cpp \
+    src\crypto\haraka_portable.cpp \
     src\crypto\hmac_sha256.cpp \
     src\crypto\hmac_sha512.cpp \
     src\crypto\ripemd160.cpp \
     src\crypto\sha1.cpp \
     src\crypto\sha256.cpp \
     src\crypto\sha512.cpp \
-    src\eccryptoverify.cpp \
-    src\ecwrapper.cpp \
+    src\crypto\verus_hash.cpp \
     src\fs.cpp \
     src\hash_komodo.cpp \
     src\httprpc.cpp \
     src\httpserver.cpp \
     src\init.cpp \
+    src\importcoin.cpp \
     src\key.cpp \
     src\keystore.cpp \
+    src\key_io.cpp \
     src\leveldb\db\builder.cc \
     src\leveldb\db\db_impl.cc \
     src\leveldb\db\db_iter.cc \
@@ -297,7 +308,7 @@ SOURCES += src\protobuf\google\protobuf\any.cc \
     src\leveldb\util\logging.cc \
     src\leveldb\util\options.cc \
     src\leveldb\util\status_leveldb.cc \
-    src\leveldbwrapper.cpp \
+    src\dbwrapper.cpp \
     src\libevent\buffer.c \
     src\libevent\buffer_iocp.c \
     src\libevent\bufferevent.c \
@@ -331,15 +342,19 @@ SOURCES += src\protobuf\google\protobuf\any.cc \
     src\miner.cpp \
     src\net.cpp \
     src\netbase.cpp \
+    src\notarisationdb.cpp \
     src\policy\fees.cpp \
     src\policy\policy.cpp \
     src\pow.cpp \
     src\primitives\block_komodo.cpp \
+    src\primitives\nonce.cpp \
     src\primitives\transaction.cpp \
     src\protocol.cpp \
     src\pubkey.cpp \
     src\qt\addressbookpage.cpp \
+    src\qt\zaddressbookpage.cpp \
     src\qt\addresstablemodel.cpp \
+    src\qt\zaddresstablemodel.cpp \
     src\qt\askpassphrasedialog.cpp \
     src\qt\bantablemodel.cpp \
     src\qt\clientmodel.cpp \
@@ -347,6 +362,7 @@ SOURCES += src\protobuf\google\protobuf\any.cc \
     src\qt\coincontroltreewidget.cpp \
     src\qt\csvmodelwriter.cpp \
     src\qt\editaddressdialog.cpp \
+    src\qt\editzaddressdialog.cpp \
     src\qt\guiutil.cpp \
     src\qt\intro.cpp \
     src\qt\komodo.cpp \
@@ -373,6 +389,7 @@ SOURCES += src\protobuf\google\protobuf\any.cc \
     src\qt\recentrequeststablemodel.cpp \
     src\qt\rpcconsole.cpp \
     src\qt\sendcoinsdialog.cpp \
+    src\qt\zsendcoinsdialog.cpp \
     src\qt\sendcoinsentry.cpp \
     src\qt\signverifymessagedialog.cpp \
     src\qt\splashscreen.cpp \
@@ -387,23 +404,26 @@ SOURCES += src\protobuf\google\protobuf\any.cc \
     src\qt\walletframe.cpp \
     src\qt\walletmodel.cpp \
     src\qt\walletmodeltransaction.cpp \
+    src\qt\walletmodelztransaction.cpp \
     src\qt\walletview.cpp \
     src\qt\winshutdownmonitor.cpp \
     src\random.cpp \
     src\rest.cpp \
-    src\rpcblockchain.cpp \
-    src\rpcclient.cpp \
-    src\rpcmining.cpp \
-    src\rpcmisc.cpp \
-    src\rpcnet.cpp \
-    src\rpcprotocol.cpp \
-    src\rpcrawtransaction.cpp \
-    src\rpcserver.cpp \
+    src\rpc\blockchain.cpp \
+    src\rpc\client.cpp \
+    src\rpc\crosschain_rpc.cpp \
+    src\rpc\mining.cpp \
+    src\rpc\misc.cpp \
+    src\rpc\net_rpc.cpp \
+    src\rpc\protocol_rpc.cpp \
+    src\rpc\rawtransaction.cpp \
+    src\rpc\server.cpp \
     src\scheduler.cpp \
     src\script\interpreter.cpp \
     src\script\script.cpp \
     src\script\script_error.cpp \
-    src\script\sigcache.cpp \
+    src\script\script_ext.cpp \
+    src\script\serverchecker.cpp \
     src\script\sign.cpp \
     src\script\standard.cpp \
     src\secp256k1\src\secp256k1.c \
@@ -415,6 +435,7 @@ SOURCES += src\protobuf\google\protobuf\any.cc \
     src\threadinterrupt.cpp \
     src\timedata.cpp \
     src\torcontrol.cpp \
+    src\transaction_builder.cpp \
     src\txdb.cpp \
     src\txmempool.cpp \
     src\uint256.cpp \
@@ -445,8 +466,90 @@ SOURCES += src\protobuf\google\protobuf\any.cc \
     src\zcash\prf.cpp \
     src\zcash\Proof.cpp \
     src\zcash\util_zcash.cpp \
+    src\zcash\zip32.cpp \
     src\zcbenchmarks.cpp \
-    src\chainparams.cpp
+    src\chainparams.cpp \
+    src\cc\assets.cpp \
+    src\cc\auction.cpp \
+    src\cc\betprotocol.cpp \
+    src\cc\channels.cpp \
+    src\cc\CCassetstx.cpp \
+    src\cc\CCassetsCore.cpp \
+    src\cc\CCcustom.cpp \
+    src\cc\CCtx.cpp \
+    src\cc\CCutils.cpp \
+    src\cc\dice.cpp \
+    src\cc\eval.cpp \
+    src\cc\faucet.cpp \
+    src\cc\fsm.cpp \
+    src\cc\gateways.cpp \
+    src\cc\heir.cpp \
+    src\cc\import.cpp \
+    src\cc\lotto.cpp \
+    src\cc\oracles.cpp \
+    src\cc\payments.cpp \
+    src\cc\pegs.cpp \
+    src\cc\prices.cpp \
+    src\cc\rewards.cpp \
+    src\cc\triggers.cpp \
+    src\consensus\upgrades.cpp \
+    src\deprecation.cpp \
+    src\paymentdisclosure.cpp \
+    src\paymentdisclosuredb.cpp \
+    src\script\cc.cpp \
+    src\wallet\asyncrpcoperation_mergetoaddress.cpp \
+    src\wallet\asyncrpcoperation_shieldcoinbase.cpp \
+    src\wallet\rpcdisclosure.cpp \
+    src\cryptoconditions\src\cryptoconditions.cpp \
+    src\cryptoconditions\src\asn\Condition.c	\
+    src\cryptoconditions\src\asn\SimpleSha256Condition.c	\
+    src\cryptoconditions\src\asn\CompoundSha256Condition.c	\
+    src\cryptoconditions\src\asn\ConditionTypes.c	\
+    src\cryptoconditions\src\asn\Fulfillment.c	\
+    src\cryptoconditions\src\asn\PreimageFulfillment.c	\
+    src\cryptoconditions\src\asn\PrefixFulfillment.c	\
+    src\cryptoconditions\src\asn\ThresholdFulfillment.c	\
+    src\cryptoconditions\src\asn\RsaSha256Fulfillment.c	\
+    src\cryptoconditions\src\asn\Ed25519Sha512Fulfillment.c	\
+    src\cryptoconditions\src\asn\Secp256k1Fulfillment.c	\
+    src\cryptoconditions\src\asn\EvalFulfillment.c	\
+    src\cryptoconditions\src\asn\PrefixFingerprintContents.c	\
+    src\cryptoconditions\src\asn\ThresholdFingerprintContents.c	\
+    src\cryptoconditions\src\asn\RsaFingerprintContents.c	\
+    src\cryptoconditions\src\asn\Ed25519FingerprintContents.c	\
+    src\cryptoconditions\src\asn\Secp256k1FingerprintContents.c \
+    src\cryptoconditions\src\asn\INTEGER.c \
+    src\cryptoconditions\src\asn\NativeEnumerated.c \
+    src\cryptoconditions\src\asn\NativeInteger.c \
+    src\cryptoconditions\src\asn\asn_SET_OF.c \
+    src\cryptoconditions\src\asn\constr_CHOICE.c \
+    src\cryptoconditions\src\asn\constr_SEQUENCE.c \
+    src\cryptoconditions\src\asn\constr_SET_OF.c \
+    src\cryptoconditions\src\asn\OCTET_STRING.c \
+    src\cryptoconditions\src\asn\BIT_STRING.c \
+    src\cryptoconditions\src\asn\asn_codecs_prim.c \
+    src\cryptoconditions\src\asn\ber_tlv_length.c \
+    src\cryptoconditions\src\asn\ber_tlv_tag.c \
+    src\cryptoconditions\src\asn\ber_decoder.c \
+    src\cryptoconditions\src\asn\der_encoder.c \
+    src\cryptoconditions\src\asn\constr_TYPE.c \
+    src\cryptoconditions\src\asn\constraints.c \
+    src\cryptoconditions\src\asn\xer_support.c \
+    src\cryptoconditions\src\asn\xer_decoder.c \
+    src\cryptoconditions\src\asn\xer_encoder.c \
+    src\cryptoconditions\src\asn\per_support.c \
+    src\cryptoconditions\src\asn\per_decoder.c \
+    src\cryptoconditions\src\asn\per_encoder.c \
+    src\cryptoconditions\src\asn\per_opentype.c \
+    src\cryptoconditions\src\cryptoconditions_utils.cpp \
+    src\cryptoconditions\src\include\cryptoconditions_sha256.c \
+    src\cryptoconditions\src\include\ed25519\src\keypair.cpp \
+    src\cryptoconditions\src\include\ed25519\src\cryptoconditions_sign.cpp \
+    src\cryptoconditions\src\include\ed25519\src\verify.cpp \
+    src\cryptoconditions\src\include\ed25519\src\cryptoconditions_sha512.cpp \
+    src\cryptoconditions\src\include\ed25519\src\ge.cpp \
+    src\cryptoconditions\src\include\ed25519\src\sc.cpp \
+    src\cryptoconditions\src\include\ed25519\src\fe.cpp 
 
 RESOURCES += \
     src\qt\komodo.qrc \
@@ -455,9 +558,12 @@ RESOURCES += \
 FORMS += \
     src\qt\forms\coincontroldialog.ui \
     src\qt\forms\sendcoinsdialog.ui \
+    src\qt\forms\zsendcoinsdialog.ui \
     src\qt\forms\addressbookpage.ui \
+    src\qt\forms\zaddressbookpage.ui \
     src\qt\forms\signverifymessagedialog.ui \
     src\qt\forms\editaddressdialog.ui \
+    src\qt\forms\editzaddressdialog.ui \
     src\qt\forms\transactiondescdialog.ui \
     src\qt\forms\overviewpage.ui \
     src\qt\forms\sendcoinsentry.ui \
@@ -530,11 +636,12 @@ macx:QMAKE_CXXFLAGS_THREAD += -pthread
 macx:QMAKE_LFLAGS_THREAD += -pthread
 
 # Set libraries and includes at end, to use platform-defined defaults if not overridden
-LIBS += $$join(BOOST_LIB_PATH,,-L,) $$join(OPENSSL_LIB_PATH,,-L,)
+LIBS += $$join(BOOST_LIB_PATH,,-L,) $$join(OPENSSL_LIB_PATH,,-L,) # $$join(RUST_LIB_PATH,,-L,)
 LIBS += $$BDB_LIB_SUFFIX
-windows:LIBS += -lws2_32 -lshlwapi -lmswsock -lole32 -loleaut32 -luuid -lgdi32 -luser32
+windows:LIBS += -lws2_32 -lshlwapi -lmswsock -lole32 -loleaut32 -luuid -lgdi32 -luser32 -luserenv
 LIBS += -lboost_system$$BOOST_LIB_SUFFIX -lboost_filesystem$$BOOST_LIB_SUFFIX -lboost_program_options$$BOOST_LIB_SUFFIX -lboost_thread$$BOOST_THREAD_LIB_SUFFIX
 windows:LIBS += -lboost_chrono$$BOOST_LIB_SUFFIX
+#LIBS += -lrustzcash
 
 Release:LIBS += -ldepends\libgmp_6.1.1_msvc14\lib\x64\gmp
 Release:LIBS += -ldepends\libsodium-1.0.15-msvc\x64\Release\v140\dynamic\libsodium
@@ -542,13 +649,15 @@ Release:LIBS += -ldepends\libcurl-master\lib\dll-release-x64\libcurl
 Release:LIBS += -ldepends\db-6.2.23\build_windows\x64\Release\libdb62
 Release:LIBS += -llibcryptoMD -llibsslMD
 Release:LIBS += -ldepends\pthreads-master\dll\x64\Release\pthreads
+Release:LIBS += -l$$RUST_LIB_PATH\release\rustzcash
 
 Debug:LIBS += -ldepends\libgmp_6.1.1_msvc14\lib\x64\gmp
 Debug:LIBS += -ldepends\libsodium-1.0.15-msvc\x64\Debug\v140\dynamic\libsodium
-Debug:LIBS += -lldepends\libcurl-master\lib\dll-debug-x64\libcurl_debug
+Debug:LIBS += -ldepends\libcurl-master\lib\dll-debug-x64\libcurl_debug
 Debug:LIBS += -ldepends\db-6.2.23\build_windows\x64\Debug\libdb62d
 Debug:LIBS += -llibcryptoMDd -llibsslMDd
-Debug:LIBS += -lldepends\pthreads-master\dll\x64\Debug\pthreads
+Debug:LIBS += -ldepends\pthreads-master\dll\x64\Debug\pthreads
+Debug:LIBS += -l$$RUST_LIB_PATH\debug\rustzcash
 
 !windows:!macx {
     DEFINES += LINUX
@@ -557,5 +666,8 @@ Debug:LIBS += -lldepends\pthreads-master\dll\x64\Debug\pthreads
 
 QMAKE_CXXFLAGS += -O2 -bigobj -Zp8 -GS -wd4800 -wd4100 -wd4267 -wd4244 -wd4101 -w14100 -wd4146 -wd4189 -wd4018 -wd4290 -wd4334 -wd4996
 QMAKE_CFLAGS += -O2 -bigobj -Zp8 -GS -wd4800 -wd4100 -wd4267 -wd4244 -wd4101 -w14100 -wd4146 -wd4189 -wd4018 -wd4290 -wd4334 -wd4996
+
+#QMAKE_CXXFLAGS_RELEASE += $$QMAKE_CFLAGS_RELEASE_WITH_DEBUGINFO
+#QMAKE_LFLAGS_RELEASE += $$QMAKE_LFLAGS_RELEASE_WITH_DEBUGINFO
 
 system($$QMAKE_LRELEASE -silent $$_PRO_FILE_)

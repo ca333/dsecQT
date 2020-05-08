@@ -1,12 +1,19 @@
-// Copyright (c) 2011-2016 The Komodo Core developers
+// Copyright (c) 2011-2016 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #ifndef KOMODO_QT_WALLETMODEL_H
 #define KOMODO_QT_WALLETMODEL_H
 
+#if defined(HAVE_CONFIG_H)
+#include "config/komodo-config.h"
+#endif
+
+#ifdef ENABLE_BIP70
 #include "paymentrequestplus.h"
+#endif
 #include "walletmodeltransaction.h"
+#include "walletmodelztransaction.h"
 
 #include "support/allocators/secure.h"
 
@@ -16,11 +23,13 @@
 #include <QObject>
 
 class AddressTableModel;
+class ZAddressTableModel;
 class OptionsModel;
 class PlatformStyle;
 class RecentRequestsTableModel;
 class TransactionTableModel;
 class WalletModelTransaction;
+class WalletModelZTransaction;
 
 class CCoinControl;
 class CKeyID;
@@ -52,8 +61,15 @@ public:
     // If from a payment request, this is used for storing the memo
     QString message;
 
+    #ifdef ENABLE_BIP70
     // If from a payment request, paymentRequest.IsInitialized() will be true
     PaymentRequestPlus paymentRequest;
+    #else
+    // If building with BIP70 is disabled, keep the payment request around as
+    // serialized string to ensure load/store is lossless
+    std::string sPaymentRequest;
+    #endif
+
     // Empty if no authentication or invalid signature/cert/etc.
     QString authenticatedMerchant;
 
@@ -65,13 +81,15 @@ public:
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
+    inline void SerializationOp(Stream& s, Operation ser_action) {
         std::string sAddress = address.toStdString();
         std::string sLabel = label.toStdString();
         std::string sMessage = message.toStdString();
+        #ifdef ENABLE_BIP70
         std::string sPaymentRequest;
         if (!ser_action.ForRead() && paymentRequest.IsInitialized())
             paymentRequest.SerializeToString(&sPaymentRequest);
+        #endif
         std::string sAuthenticatedMerchant = authenticatedMerchant.toStdString();
 
         READWRITE(this->nVersion);
@@ -87,8 +105,10 @@ public:
             address = QString::fromStdString(sAddress);
             label = QString::fromStdString(sLabel);
             message = QString::fromStdString(sMessage);
+            #ifdef ENABLE_BIP70
             if (!sPaymentRequest.empty())
                 paymentRequest.parse(QByteArray::fromRawData(sPaymentRequest.data(), (int)(sPaymentRequest.size())));
+            #endif
             authenticatedMerchant = QString::fromStdString(sAuthenticatedMerchant);
         }
     }
@@ -107,7 +127,18 @@ public:
     {
         OK,
         InvalidAmount,
+        InvalidFromAddress,
+        HaveNotSpendingKey,
+        SendingBothSproutAndSapling,
+        SproutUsageExpired,
+        SproutUsageWillExpireSoon,
+        SendBetweenSproutAndSapling,
         InvalidAddress,
+        TooManyZaddrs,
+        SaplingHasNotActivated,
+        LargeTransactionSize,
+        TooLargeFeeForSmallTrans,
+        TooLargeFee,
         AmountExceedsBalance,
         AmountWithFeeExceedsBalance,
         DuplicateAddress,
@@ -126,6 +157,7 @@ public:
 
     OptionsModel *getOptionsModel();
     AddressTableModel *getAddressTableModel();
+    ZAddressTableModel *getZAddressTableModel();
     TransactionTableModel *getTransactionTableModel();
     RecentRequestsTableModel *getRecentRequestsTableModel();
 
@@ -136,10 +168,12 @@ public:
     CAmount getWatchBalance() const;
     CAmount getWatchUnconfirmedBalance() const;
     CAmount getWatchImmatureBalance() const;
+    CAmount getPrivateBalance() const;
+    CAmount getInterestBalance() const;
     EncryptionStatus getEncryptionStatus() const;
 
     // Check address for validity
-    bool validateAddress(const QString &address);
+    bool validateAddress(const QString &address, bool allowZAddresses=false);
 
     // Return status record for SendCoins, contains error id + information
     struct SendCoinsReturn
@@ -156,8 +190,14 @@ public:
     // prepare transaction for getting txfee before sending coins
     SendCoinsReturn prepareTransaction(WalletModelTransaction &transaction, const CCoinControl& coinControl);
 
+    // prepare z-transaction for getting txfee before sending coins
+    SendCoinsReturn prepareZTransaction(WalletModelZTransaction &transaction, const CCoinControl& coinControl);
+
     // Send coins to a list of recipients
     SendCoinsReturn sendCoins(WalletModelTransaction &transaction);
+
+    // Z-Send coins to a list of recipients
+    SendCoinsReturn zsendCoins(WalletModelZTransaction &transaction);
 
     // Wallet encryption
     bool setWalletEncrypted(bool encrypted, const SecureString &passphrase);
@@ -211,6 +251,9 @@ public:
     int getDefaultConfirmTarget() const;
 
     bool getDefaultWalletRbf() const;
+    std::map<CTxDestination, CAmount> getTAddressBalances();
+    std::map<libzcash::PaymentAddress, CAmount> getZAddressBalances();
+    CAmount getAddressBalance(const std::string &sAddress);
 
 private:
     CWallet *wallet;
@@ -222,6 +265,7 @@ private:
     OptionsModel *optionsModel;
 
     AddressTableModel *addressTableModel;
+    ZAddressTableModel *zaddressTableModel;
     TransactionTableModel *transactionTableModel;
     RecentRequestsTableModel *recentRequestsTableModel;
 
@@ -232,6 +276,8 @@ private:
     CAmount cachedWatchOnlyBalance;
     CAmount cachedWatchUnconfBalance;
     CAmount cachedWatchImmatureBalance;
+    CAmount cachedPrivateBalance;
+    CAmount cachedInterestBalance;
     EncryptionStatus cachedEncryptionStatus;
     int cachedNumBlocks;
 
@@ -244,7 +290,8 @@ private:
 Q_SIGNALS:
     // Signal that balance in wallet changed
     void balanceChanged(const CAmount& balance, const CAmount& unconfirmedBalance, const CAmount& immatureBalance,
-                        const CAmount& watchOnlyBalance, const CAmount& watchUnconfBalance, const CAmount& watchImmatureBalance);
+                        const CAmount& watchOnlyBalance, const CAmount& watchUnconfBalance, const CAmount& watchImmatureBalance,
+                        const CAmount& privateBalance, const CAmount& interestBalance);
 
     // Encryption status of wallet changed
     void encryptionStatusChanged(int status);
@@ -260,6 +307,9 @@ Q_SIGNALS:
     // Coins sent: from wallet, to recipient, in (serialized) transaction:
     void coinsSent(CWallet* wallet, SendCoinsRecipient recipient, QByteArray transaction);
 
+    // Coins sent: from wallet, to recipient, in (serialized) transaction:
+    void coinsZSent(AsyncRPCOperationId operationId);
+
     // Show progress dialog e.g. for rescan
     void showProgress(const QString &title, int nProgress);
 
@@ -273,6 +323,8 @@ public Q_SLOTS:
     void updateTransaction();
     /* New, updated or removed address book entry */
     void updateAddressBook(const QString &address, const QString &label, bool isMine, const QString &purpose, int status);
+    /* New, updated or removed address book entry */
+    void updateZAddressBook(const QString &address, const QString &label, bool isMine, const QString &purpose, int status);
     /* Watch-only added */
     void updateWatchOnlyFlag(bool fHaveWatchonly);
     /* Current, immature or unconfirmed balance might have changed - emit 'balanceChanged' if so */

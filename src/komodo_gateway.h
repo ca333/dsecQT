@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright © 2014-2017 The SuperNET Developers.                             *
+ * Copyright © 2014-2018 The SuperNET Developers.                             *
  *                                                                            *
  * See the AUTHORS, DEVELOPER-AGREEMENT and LICENSE files at                  *
  * the top-level directory of this distribution for the individual copyright  *
@@ -14,6 +14,7 @@
  ******************************************************************************/
 
 // paxdeposit equivalent in reverse makes opreturn and KMD does the same in reverse
+#include "komodo_defs.h"
 
 int32_t pax_fiatstatus(uint64_t *available,uint64_t *deposited,uint64_t *issued,uint64_t *withdrawn,uint64_t *approved,uint64_t *redeemed,char *base)
 {
@@ -35,7 +36,7 @@ int32_t pax_fiatstatus(uint64_t *available,uint64_t *deposited,uint64_t *issued,
             maxallowed = komodo_maxallowed(baseid);
             if ( netliability < maxallowed )
                 *available = (maxallowed - netliability);
-            //LogPrintf("%llu - %llu %s %.8f %.8f %.8f %.8f %.8f\n",(long long)maxallowed,(long long)netliability,base,dstr(*deposited),dstr(*issued),dstr(*withdrawn),dstr(*approved),dstr(*redeemed));
+            //printf("%llu - %llu %s %.8f %.8f %.8f %.8f %.8f\n",(long long)maxallowed,(long long)netliability,base,dstr(*deposited),dstr(*issued),dstr(*withdrawn),dstr(*approved),dstr(*redeemed));
             return(0);
         } else LogPrintf("pax_fiatstatus cant get basesp.%s\n",base);
     } // else LogPrintf("pax_fiatstatus illegal base.%s\n",base);
@@ -82,7 +83,7 @@ struct pax_transaction *komodo_paxmark(int32_t height,uint256 txid,uint16_t vout
         pax->type = type;
         memcpy(pax->buf,buf,sizeof(pax->buf));
         HASH_ADD_KEYPTR(hh,PAX,pax->buf,sizeof(pax->buf),pax);
-        //LogPrintf("ht.%d create pax.%p mark.%d\n",height,pax,mark);
+        //printf("ht.%d create pax.%p mark.%d\n",height,pax,mark);
     }
     if ( pax != 0 )
     {
@@ -105,7 +106,7 @@ void komodo_paxdelete(struct pax_transaction *pax)
 
 void komodo_gateway_deposit(char *coinaddr,uint64_t value,char *symbol,uint64_t fiatoshis,uint8_t *rmd160,uint256 txid,uint16_t vout,uint8_t type,int32_t height,int32_t otherheight,char *source,int32_t approved) // assetchain context
 {
-    struct pax_transaction *pax; uint8_t buf[35]; int32_t addflag = 0; struct komodo_state *sp; char str[16],dest[16],*s;
+    struct pax_transaction *pax; uint8_t buf[35]; int32_t addflag = 0; struct komodo_state *sp; char str[KOMODO_ASSETCHAIN_MAXLEN],dest[KOMODO_ASSETCHAIN_MAXLEN],*s;
     //if ( KOMODO_PAX == 0 )
     //    return;
     //if ( strcmp(symbol,ASSETCHAINS_SYMBOL) != 0 )
@@ -152,7 +153,7 @@ void komodo_gateway_deposit(char *coinaddr,uint64_t value,char *symbol,uint64_t 
     else
     {
         pax->marked = height;
-        //LogPrintf("pax.%p MARK DEPOSIT ht.%d other.%d\n",pax,height,otherheight);
+        //printf("pax.%p MARK DEPOSIT ht.%d other.%d\n",pax,height,otherheight);
     }
 }
 
@@ -174,7 +175,7 @@ int32_t komodo_rwapproval(int32_t rwflag,uint8_t *opretbuf,struct pax_transactio
         //    LogPrintf("%02x",((uint8_t *)&pax->txid)[31-i]);
         pax->vout = opretbuf[len++];
         pax->vout += ((uint32_t)opretbuf[len++] << 8);
-        //LogPrintf(" txid v.%d\n",pax->vout);
+        //printf(" txid v.%d\n",pax->vout);
     }
     len += iguana_rwnum(rwflag,&opretbuf[len],sizeof(pax->komodoshis),&pax->komodoshis);
     len += iguana_rwnum(rwflag,&opretbuf[len],sizeof(pax->fiatoshis),&pax->fiatoshis);
@@ -197,7 +198,7 @@ int32_t komodo_rwapproval(int32_t rwflag,uint8_t *opretbuf,struct pax_transactio
 
 int32_t komodo_issued_opreturn(char *base,uint256 *txids,uint16_t *vouts,int64_t *values,int64_t *srcvalues,int32_t *kmdheights,int32_t *otherheights,int8_t *baseids,uint8_t *rmd160s,uint8_t *opretbuf,int32_t opretlen,int32_t iskomodo)
 {
-    struct pax_transaction p,*pax; int32_t i,n=0,j,len=0,incr,height,otherheight; uint8_t type,rmd160[20]; uint64_t fiatoshis; char symbol[16];
+    struct pax_transaction p,*pax; int32_t i,n=0,j,len=0,incr,height,otherheight; uint8_t type,rmd160[20]; uint64_t fiatoshis; char symbol[KOMODO_ASSETCHAIN_MAXLEN];
     //if ( KOMODO_PAX == 0 )
     //    return(0);
     incr = 34 + (iskomodo * (2*sizeof(fiatoshis) + 2*sizeof(height) + 20 + 4));
@@ -207,8 +208,8 @@ int32_t komodo_issued_opreturn(char *base,uint256 *txids,uint16_t *vouts,int64_t
     
     //for (i=0; i<opretlen; i++)
     //    LogPrintf("%02x",opretbuf[i]);
-    //LogPrintf(" opretlen.%d (%s)\n",opretlen,base);
-    //LogPrintf(" opretlen.%d vs %d incr.%d (%d)\n",opretlen,(int32_t)(2*sizeof(fiatoshis) + 2*sizeof(height) + 20 + 2),incr,opretlen/incr);
+    //printf(" opretlen.%d (%s)\n",opretlen,base);
+    //printf(" opretlen.%d vs %d incr.%d (%d)\n",opretlen,(int32_t)(2*sizeof(fiatoshis) + 2*sizeof(height) + 20 + 2),incr,opretlen/incr);
     //if ( ASSETCHAINS_SYMBOL[0] == 0 || strncmp(ASSETCHAINS_SYMBOL,base,strlen(base)) == 0 )
     {
         type = opretbuf[0];
@@ -244,7 +245,7 @@ int32_t komodo_issued_opreturn(char *base,uint256 *txids,uint16_t *vouts,int64_t
                 for (j=0; j<32; j++)
                 {
                     ((uint8_t *)&txids[n])[j] = opretbuf[len++];
-                    //LogPrintf("%02x",((uint8_t *)&txids[n])[j]);
+                    //printf("%02x",((uint8_t *)&txids[n])[j]);
                 }
                 vouts[n] = opretbuf[len++];
                 vouts[n] = (opretbuf[len++] << 8) | vouts[n];
@@ -258,7 +259,7 @@ int32_t komodo_issued_opreturn(char *base,uint256 *txids,uint16_t *vouts,int64_t
                     memcpy(&rmd160s[n * 20],pax->rmd160,20);
                 }
             }
-            //LogPrintf(" komodo_issued_opreturn issuedtxid v%d i.%d opretlen.%d\n",vouts[n],n,opretlen);
+            //printf(" komodo_issued_opreturn issuedtxid v%d i.%d opretlen.%d\n",vouts[n],n,opretlen);
         }
     }
     return(n);
@@ -274,7 +275,7 @@ int32_t komodo_paxcmp(char *symbol,int32_t kmdheight,uint64_t value,uint64_t che
             return(0);
         else
         {
-            if ( kmdheight >= 238000 )
+            if ( ASSETCHAINS_SYMBOL[0] != 0 )
                 LogPrintf("ht.%d ignore mismatched %s value %lld vs checkvalue %lld -> ratio.%d\n",kmdheight,symbol,(long long)value,(long long)checkvalue,ratio);
             return(-1);
         }
@@ -290,7 +291,7 @@ int32_t komodo_paxcmp(char *symbol,int32_t kmdheight,uint64_t value,uint64_t che
 
 uint64_t komodo_paxtotal()
 {
-    struct pax_transaction *pax,*pax2,*tmp,*tmp2; char symbol[16],dest[16],*str; int32_t i,ht; int64_t checktoshis; uint64_t seed,total = 0; struct komodo_state *basesp;
+    struct pax_transaction *pax,*pax2,*tmp,*tmp2; char symbol[KOMODO_ASSETCHAIN_MAXLEN],dest[KOMODO_ASSETCHAIN_MAXLEN],*str; int32_t i,ht; int64_t checktoshis; uint64_t seed,total = 0; struct komodo_state *basesp;
     if ( KOMODO_PASSPORT_INITDONE == 0 ) //KOMODO_PAX == 0 ||
         return(0);
     if ( komodo_isrealtime(&ht) == 0 )
@@ -329,7 +330,7 @@ uint64_t komodo_paxtotal()
                         if ( komodo_paxcmp(pax->source,pax->height,pax->komodoshis,checktoshis,seed) != 0 )
                         {
                             pax->marked = pax->height;
-                            //LogPrintf("WITHDRAW.%s mark <- %d %.8f != %.8f\n",pax->source,pax->height,dstr(checktoshis),dstr(pax->komodoshis));
+                            //printf("WITHDRAW.%s mark <- %d %.8f != %.8f\n",pax->source,pax->height,dstr(checktoshis),dstr(pax->komodoshis));
                         }
                         else if ( pax->validated == 0 )
                         {
@@ -375,8 +376,8 @@ uint64_t komodo_paxtotal()
                     {
                         seed = 0;
                         checktoshis = komodo_paxprice(&seed,pax->height,pax->source,(char *)"KMD",(uint64_t)pax->fiatoshis);
-                        //LogPrintf("paxtotal PAX_fiatdest ht.%d price %s %.8f -> KMD %.8f vs %.8f\n",pax->height,pax->symbol,(double)pax->fiatoshis/COIN,(double)pax->komodoshis/COIN,(double)checktoshis/COIN);
-                        //LogPrintf(" v%d %.8f k.%d ht.%d\n",pax->vout,dstr(pax->komodoshis),pax->height,pax->otherheight);
+                        //printf("paxtotal PAX_fiatdest ht.%d price %s %.8f -> KMD %.8f vs %.8f\n",pax->height,pax->symbol,(double)pax->fiatoshis/COIN,(double)pax->komodoshis/COIN,(double)checktoshis/COIN);
+                        //printf(" v%d %.8f k.%d ht.%d\n",pax->vout,dstr(pax->komodoshis),pax->height,pax->otherheight);
                         if ( seed != 0 && checktoshis != 0 )
                         {
                             if ( checktoshis == pax->komodoshis )
@@ -393,7 +394,7 @@ uint64_t komodo_paxtotal()
             }
         }
     }
-    //LogPrintf("paxtotal %.8f\n",dstr(total));
+    //printf("paxtotal %.8f\n",dstr(total));
     return(total);
 }
 
@@ -415,7 +416,7 @@ static int _paxorder(const void *a,const void *b)
 
 int32_t komodo_pending_withdraws(char *opretstr) // todo: enforce deterministic order
 {
-    struct pax_transaction *pax,*pax2,*tmp,*paxes[64]; uint8_t opretbuf[16384]; int32_t i,n,ht,len=0; uint64_t total = 0;
+    struct pax_transaction *pax,*pax2,*tmp,*paxes[64]; uint8_t opretbuf[16384*4]; int32_t i,n,ht,len=0; uint64_t total = 0;
     if ( KOMODO_PAX == 0 || KOMODO_PASSPORT_INITDONE == 0 )
         return(0);
     if ( komodo_isrealtime(&ht) == 0 || ASSETCHAINS_SYMBOL[0] != 0 )
@@ -432,7 +433,7 @@ int32_t komodo_pending_withdraws(char *opretstr) // todo: enforce deterministic 
             }
             else if ( (pax2= komodo_paxfind(pax->txid,pax->vout,'X')) != 0 )
                 pax->approved = pax->height;
-            //LogPrintf("pending_withdraw: pax %s marked.%u approved.%u validated.%llu\n",pax->symbol,pax->marked,pax->approved,(long long)pax->validated);
+            //printf("pending_withdraw: pax %s marked.%u approved.%u validated.%llu\n",pax->symbol,pax->marked,pax->approved,(long long)pax->validated);
             if ( pax->marked == 0 && pax->approved == 0 && pax->validated != 0 ) //strcmp((char *)"KMD",pax->symbol) == 0 &&
             {
                 if ( n < sizeof(paxes)/sizeof(*paxes) )
@@ -440,7 +441,7 @@ int32_t komodo_pending_withdraws(char *opretstr) // todo: enforce deterministic 
                     paxes[n++] = pax;
                     //int32_t j; for (j=0; j<32; j++)
                     //    LogPrintf("%02x",((uint8_t *)&pax->txid)[j]);
-                    //LogPrintf(" %s.(kmdht.%d ht.%d marked.%u approved.%d validated %.8f) %.8f\n",pax->source,pax->height,pax->otherheight,pax->marked,pax->approved,dstr(pax->validated),dstr(pax->komodoshis));
+                    //printf(" %s.(kmdht.%d ht.%d marked.%u approved.%d validated %.8f) %.8f\n",pax->source,pax->height,pax->otherheight,pax->marked,pax->approved,dstr(pax->validated),dstr(pax->komodoshis));
                 }
             }
         }
@@ -464,7 +465,7 @@ int32_t komodo_pending_withdraws(char *opretstr) // todo: enforce deterministic 
 
 int32_t komodo_gateway_deposits(CMutableTransaction *txNew,char *base,int32_t tokomodo)
 {
-    struct pax_transaction *pax,*tmp; char symbol[16],dest[16]; uint8_t *script,opcode,opret[16384],data[16384]; int32_t i,baseid,ht,len=0,opretlen=0,numvouts=1; struct komodo_state *sp; uint64_t available,deposited,issued,withdrawn,approved,redeemed,mask,sum = 0;
+    struct pax_transaction *pax,*tmp; char symbol[KOMODO_ASSETCHAIN_MAXLEN],dest[KOMODO_ASSETCHAIN_MAXLEN]; uint8_t *script,opcode,opret[16384*4],data[16384*4]; int32_t i,baseid,ht,len=0,opretlen=0,numvouts=1; struct komodo_state *sp; uint64_t available,deposited,issued,withdrawn,approved,redeemed,mask,sum = 0;
     if ( KOMODO_PASSPORT_INITDONE == 0 )//KOMODO_PAX == 0 ||
         return(0);
     struct komodo_state *kmdsp = komodo_stateptrget((char *)"KMD");
@@ -477,7 +478,11 @@ int32_t komodo_gateway_deposits(CMutableTransaction *txNew,char *base,int32_t to
     {
         if ( komodo_isrealtime(&ht) != 0 )
             break;
+#ifdef WIN32
+        boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
+#else
         sleep(1);
+#endif
     }
     if ( i == 3 )
     {
@@ -524,7 +529,7 @@ int32_t komodo_gateway_deposits(CMutableTransaction *txNew,char *base,int32_t to
             //    LogPrintf("miner.[%s]: skip %s %.8f when avail %.8f deposited %.8f, issued %.8f withdrawn %.8f approved %.8f redeemed %.8f\n",ASSETCHAINS_SYMBOL,symbol,dstr(pax->fiatoshis),dstr(available),dstr(deposited),dstr(issued),dstr(withdrawn),dstr(approved),dstr(redeemed));
             continue;
         }
-        /*LogPrintf("pax.%s marked.%d %.8f -> %.8f ready.%d validated.%d\n",pax->symbol,pax->marked,dstr(pax->komodoshis),dstr(pax->fiatoshis),pax->ready!=0,pax->validated!=0);
+        /*printf("pax.%s marked.%d %.8f -> %.8f ready.%d validated.%d\n",pax->symbol,pax->marked,dstr(pax->komodoshis),dstr(pax->fiatoshis),pax->ready!=0,pax->validated!=0);
         if ( pax->marked != 0 || (pax->type != 'D' && pax->type != 'A') || pax->ready == 0 )
         {
             LogPrintf("reject 2\n");
@@ -551,7 +556,7 @@ int32_t komodo_gateway_deposits(CMutableTransaction *txNew,char *base,int32_t to
             } else continue;
         }
 
-        //LogPrintf("redeem.%d? (%c) %p pax.%s marked.%d %.8f -> %.8f ready.%d validated.%d approved.%d\n",tokomodo,pax->type,pax,pax->symbol,pax->marked,dstr(pax->komodoshis),dstr(pax->fiatoshis),pax->ready!=0,pax->validated!=0,pax->approved!=0);
+        //printf("redeem.%d? (%c) %p pax.%s marked.%d %.8f -> %.8f ready.%d validated.%d approved.%d\n",tokomodo,pax->type,pax,pax->symbol,pax->marked,dstr(pax->komodoshis),dstr(pax->fiatoshis),pax->ready!=0,pax->validated!=0,pax->approved!=0);
         if ( 0 && ASSETCHAINS_SYMBOL[0] != 0 )
             LogPrintf("pax.%s marked.%d %.8f -> %.8f\n",ASSETCHAINS_SYMBOL,pax->marked,dstr(pax->komodoshis),dstr(pax->fiatoshis));
         if ( opcode == 'I' )
@@ -649,10 +654,10 @@ int32_t komodo_bannedset(int32_t *indallvoutsp,uint256 *array,int32_t max)
 
 void komodo_passport_iteration();
 
-int32_t komodo_check_deposit(int32_t height,const CBlock& block) // verify above block is valid pax pricing
+int32_t komodo_check_deposit(int32_t height,const CBlock& block,uint32_t prevtime) // verify above block is valid pax pricing
 {
     static uint256 array[64]; static int32_t numbanned,indallvouts;
-    int32_t i,j,k,n,ht,baseid,txn_count,activation,num,opretlen,offset=1,errs=0,matched=0,kmdheights[256],otherheights[256]; uint256 hash,txids[256]; char symbol[16],base[16]; uint16_t vouts[256]; int8_t baseids[256]; uint8_t *script,opcode,rmd160s[256*20]; uint64_t total,available,deposited,issued,withdrawn,approved,redeemed,checktoshis,seed; int64_t values[256],srcvalues[256]; struct pax_transaction *pax; struct komodo_state *sp;
+    int32_t i,j,k,n,ht,baseid,txn_count,activation,num,opretlen,offset=1,errs=0,notmatched=0,matched=0,kmdheights[256],otherheights[256]; uint256 hash,txids[256]; char symbol[KOMODO_ASSETCHAIN_MAXLEN],base[KOMODO_ASSETCHAIN_MAXLEN]; uint16_t vouts[256]; int8_t baseids[256]; uint8_t *script,opcode,rmd160s[256*20]; uint64_t total,subsidy,available,deposited,issued,withdrawn,approved,redeemed,seed; int64_t checktoshis,values[256],srcvalues[256]; struct pax_transaction *pax; struct komodo_state *sp; CTransaction tx;
     activation = 235300;
     if ( *(int32_t *)&array[0] == 0 )
         numbanned = komodo_bannedset(&indallvouts,array,(int32_t)(sizeof(array)/sizeof(*array)));
@@ -667,6 +672,11 @@ int32_t komodo_check_deposit(int32_t height,const CBlock& block) // verify above
     {
         for (i=0; i<txn_count; i++)
         {
+            if ( i == 0 && txn_count > 1 && block.vtx[txn_count-1].vout.size() > 0 && block.vtx[txn_count-1].vout[0].nValue == 5000 )
+            {
+                if ( block.vtx[txn_count-1].vin.size() == 1 && GetTransaction(block.vtx[txn_count-1].vin[0].prevout.hash,tx,hash,false) && block.vtx[0].vout[0].scriptPubKey == tx.vout[block.vtx[txn_count-1].vin[0].prevout.n].scriptPubKey )
+                    notmatched = 1;
+            }
             n = block.vtx[i].vin.size();
             for (j=0; j<n; j++)
             {
@@ -681,19 +691,24 @@ int32_t komodo_check_deposit(int32_t height,const CBlock& block) // verify above
             }
         }
     }
-    n = block.vtx[0].vout.size();
-    script = (uint8_t *)block.vtx[0].vout[n-1].scriptPubKey.data();
-    if ( n <= 2 || script[0] != 0x6a )
+    // we don't want these checks in VRSC, leave it at the Sapling upgrade
+    if ( ASSETCHAINS_SYMBOL[0] == 0 || 
+         (ASSETCHAINS_COMMISSION != 0 && height > 1) ||
+         NetworkUpgradeActive(height, Params().GetConsensus(), Consensus::UPGRADE_SAPLING) )
     {
-        int64_t val,prevtotal = 0; int32_t overflow = 0;
+        n = block.vtx[0].vout.size();
+        int64_t val,prevtotal = 0; int32_t strangeout=0,overflow = 0;
         total = 0;
         for (i=1; i<n; i++)
         {
+            script = (uint8_t *)&block.vtx[0].vout[i].scriptPubKey[0];
             if ( (val= block.vtx[0].vout[i].nValue) < 0 || val >= MAX_MONEY )
             {
                 overflow = 1;
                 break;
             }
+            if ( i > 1 && script[0] != 0x6a && val < 5000 )
+                strangeout++;
             total += val;
             if ( total < prevtotal || (val != 0 && total == prevtotal) )
             {
@@ -706,323 +721,57 @@ int32_t komodo_check_deposit(int32_t height,const CBlock& block) // verify above
         {
             if ( overflow != 0 || total > COIN/10 )
             {
-                //LogPrintf(">>>>>>>> <<<<<<<<<< ht.%d illegal nonz output %.8f n.%d\n",height,dstr(block.vtx[0].vout[1].nValue),n);
                 if ( height >= activation )
+                {
+                    if ( height > 800000 )
+                        LogPrintf(">>>>>>>> <<<<<<<<<< ht.%d illegal nonz output %.8f n.%d\n",height,dstr(block.vtx[0].vout[1].nValue),n);
                     return(-1);
+                }
+            }
+            else if ( block.nBits == KOMODO_MINDIFF_NBITS && total > 0 ) // to deal with fee stealing
+            {
+                LogPrintf("notary mined ht.%d with extra %.8f\n",height,dstr(total));
+                if ( height > KOMODO_NOTARIES_HEIGHT1 )
+                    return(-1);
+            }
+            if ( strangeout != 0 || notmatched != 0 )
+            {
+                if ( 0 && strcmp(NOTARY_PUBKEY.c_str(),"03b7621b44118017a16043f19b30cc8a4cfe068ac4e42417bae16ba460c80f3828") == 0 )
+                    LogPrintf(">>>>>>>>>>>>> DUST ht.%d strangout.%d notmatched.%d <<<<<<<<<\n",height,strangeout,notmatched);
+                if ( height > 1000000 && strangeout != 0 )
+                    return(-1);
+            }
+            else if ( height > 814000 )
+            {
+                script = (uint8_t *)&block.vtx[0].vout[0].scriptPubKey[0];
+                return(-1 * (komodo_electednotary(&num,script+1,height,0) >= 0) * (height > 1000000));
             }
         }
         else
         {
-            if ( overflow != 0 || total > 0 )
-                return(-1);
-        }
-        return(0);
-    }
-    //LogPrintf("ht.%d n.%d nValue %.8f (%d %d %d)\n",height,n,dstr(block.vtx[0].vout[1].nValue),KOMODO_PAX,komodo_isrealtime(&ht),KOMODO_PASSPORT_INITDONE);
-    offset += komodo_scriptitemlen(&opretlen,&script[offset]);
-    //LogPrintf("offset.%d opretlen.%d [%02x %02x %02x %02x]\n",offset,opretlen,script[0],script[1],script[2],script[3]);
-    if ( ASSETCHAINS_SYMBOL[0] == 0 )
-    {
-        opcode = 'X';
-        if ( height >= 235300 )
-            return(-1);
-        strcpy(symbol,(char *)"KMD");
-        if ( komodo_isrealtime(&ht) == 0 || KOMODO_PASSPORT_INITDONE == 0 ) // init time already in DB
-            return(0);
-    }
-    else
-    {
-        strcpy(symbol,ASSETCHAINS_SYMBOL);
-        opcode = 'I';
-        if ( (baseid= komodo_baseid(symbol)) < 0 )
-        {
-            if ( block.vtx[0].vout.size() != 1 )
+            checktoshis = 0;
+            if ( ASSETCHAINS_COMMISSION != 0 && height > 1 )
             {
-                LogPrintf("%s has more than one coinbase?\n",symbol);
-                return(-1);
-            }
-            return(0);
-        }
-        while ( KOMODO_PASSPORT_INITDONE == 0 )
-            komodo_passport_iteration();
-        komodo_passport_iteration();
-        // grandfathering preexisting
-        if ( height < 777 )
-            return(0);
-        if ( baseid == USD ) // 6820 in balance calcs
-        {
-            if ( height <= 6821 || height <= 2000 || height == 2968 || height == 2960 || height == 2649 || height == 3275 || height == 3282 || height == 3328 || height == 3468 )
-            return(0);
-        }
-        else if ( baseid == EUR )
-        {
-            if ( height < 1200 || height == 1408 || height == 1111 || height == 1094 || height == 1092 || height == 1080 || height == 1053 || height == 1005 || height == 822 || height == 821 || height == 810 || height == 797 || height == 790 || height == 787 || height == 785 || height == 1313 || height == 1288 || height == 1263 || height == 1262 || height <= 211 || height == 210 || height == 188 || height == 185 || height == 182 || height == 181 || height == 171 || height == 170 || height == 169 || height == 168 || height == 167 || height == 166 || height == 165 || height == 164 || height == 163 || height == 162 )
-                return(0);
-        }
-        else if ( baseid == JPY )
-        {
-            if ( height == 1038 || height == 1039 || height == 1040 || height == 1041 || height == 1014 || height == 998 || height == 973 || height == 139 || height == 971 || height == 141 || height == 816 || height == 814 || height == 803 || height == 142 || height == 782 || height == 145 || height == 181 || height == 186 || height == 192 || height == 190 || height == 189 || height == 255 || height == 218 || height == 233 || height == 259 || height == 278 || height == 361 || height == 367 || height == 733 || height == 688 || height == 468 )
-                return(0);
-        }
-        else if ( baseid == GBP )
-        {
-            if ( height == 1025 || height == 1026 || height == 1027 || height == 1028 || height == 997 || height == 970 || height == 953 || height == 951 || height == 803 || height == 800 || height == 786 || height == 123 || height == 771 || height == 137 || height == 139 || height == 140 || height == 146 || height == 194 || height == 200 || height == 202 || height == 203 || height == 205 || height == 210 || height == 216 || height == 271 || height == 233 || height == 294 )
-                return(0);
-        }
-        else if ( baseid == AUD )
-        {
-            if ( height == 1012 || height == 1013 || height == 1014 || height == 985 || height == 958 || height == 936 || height == 933 || height == 790 || height == 788 || height == 778 || height == 124 || height == 777 || height == 122 || height == 140 || height == 142 || height == 143 || height == 186 || height == 196 || height == 198 || height == 201 || height == 210 || height == 192 )
-                return(0);
-        }
-        else if ( baseid == CAD )
-        {
-            if ( height < 1000 || height == 836 || height == 781 || height == 779 || height == 798 || height == 794 || height == 1181 || height == 1179 || height == 1159 || height == 1134 || height == 1132 || height == 121 || height == 970 || height == 119 || height == 299 || height == 302 || height == 303 || height == 306 || height == 308 || height == 355 || height == 362 || height == 367 || height == 363 || height == 364 || height == 380 || height == 373 || height == 390 || height == 437 || height == 777 )
-                return(0);
-        }
-        else if ( baseid == CHF )
-        {
-            if ( height == 987 || height == 988 || height == 989 || height == 960 || height == 931 || height == 914 || height == 122 || height == 912 || height == 141 || height == 780 || height == 145 || height == 777 || height == 151 || height == 775 || height == 765 || height == 195 || height == 764 || height == 737 || height == 194 || height == 193 || height == 198 || height == 207 || height == 216 || height == 227 || height == 256 || height == 260 || height == 276 || height == 289 || height == 292 || height == 349 )
-                return(0);
-        }
-        else if ( baseid == NZD )
-        {
-            if ( height < 1000 || height == 787 || height == 786 || height == 784 || height == 785 || height == 777 || height == 1113 || height == 1083 || height == 1067 || height == 265 || height == 1064 || height == 920 || height == 913 || height == 124 || height == 911 || height == 903 || height == 900 || height == 879 || height == 122 || height == 266 || height == 269 || height == 270 || height == 278 || height == 307 || height == 318 || height == 322 || height == 335 || height == 395 || height == 406 || height == 314 )
-                return(0);
-        }
-        else if ( baseid == CNY )
-        {
-            if ( height == 987 || height == 988 || height == 989 || height == 982 || height == 957 || height == 931 || height == 119 || height == 929 || height == 134 || height == 782 || height == 137 || height == 775 || height == 143 || height == 772 || height == 186 || height == 763 || height == 761 || height == 734 || height == 183 || height == 190 || height == 192 || height == 211 || height == 203 || height == 226 || height == 263 || height == 264 || height == 277 || height == 342 || height == 613 || height == 525 )
-                return(0);
-        }
-        else if ( baseid == RUB )
-        {
-            if ( height == 819 || height == 812 || height == 810 || height == 802 || height == 801 || height == 1074 || height == 1040 || height == 1014 || height == 163 || height == 1013 || height == 877 || height == 867 || height == 863 || height == 834 || height == 158 || height == 126 || height == 106 || height == 105 || height == 174 || height == 175 || height == 176 || height == 177 || height == 181 || height == 183 || height == 184 || height == 187 )
-                return(0);
-        }
-        else if ( baseid == MXN )
-        {
-            if ( height == 1079 || height == 1080 || height == 1081 || height == 1069 || height == 1048 || height == 1028 || height == 121 || height == 1027 || height == 146 || height == 894 || height == 891 || height == 148 || height == 882 || height == 879 || height == 151 || height == 856 || height == 158 || height == 822 || height == 197 || height == 203 || height == 207 || height == 209 || height == 213 || height == 217 || height == 218 || height == 226 || height == 283 || height == 302 || height == 319 || height == 318 || height == 569 )
-                return(0);
-        }
-        else if ( baseid == BRL )
-        {
-            if ( height == 1003 || height == 1004 || height == 1005 || height == 972 || height == 943 || height == 922 || height == 118 || height == 920 || height == 145 || height == 787 || height == 783 || height == 147 || height == 781 || height == 774 || height == 148 || height == 771 || height == 154 || height == 751 || height == 156 || height == 188 || height == 193 || height == 195 || height == 199 || height == 203 || height == 225 || height == 230 || height == 262 || height == 266 || height == 284 || height == 300 || height == 640 )
-                return(0);
-        }
-        else if ( baseid == INR )
-        {
-            if ( height == 998 || height == 999 || height == 1000 || height == 788 || height == 786 || height == 775 || height == 753 || height == 125 || height == 153 || height == 155 || height == 159 || height == 204 || height == 206 || height == 211 || height == 217 || height == 220 || height == 229 || height == 265 || height == 292 || height == 300 )
-                return(0);
-        }
-        else if ( baseid == PLN )
-        {
-            if ( height == 1029 || height == 1030 || height == 1031 || height == 1009 || height == 984 || height == 960 || height == 959 || height == 798 || height == 794 || height == 792 || height == 782 || height == 775 || height == 755 || height == 122 || height == 120 || height == 158 || height == 160 || height == 163 || height == 225 || height == 217 || height == 219 || height == 229 || height == 234 || height == 286 || height == 231 || height == 292 )
-                return(0);
-        }
-        else if ( baseid == HKD )
-        {
-            if ( height == 1013 || height == 1014 || height == 1015 || height == 1002 || height == 979 || height == 947 || height == 123 || height == 946 || height == 153 || height == 811 || height == 808 || height == 806 || height == 155 || height == 795 || height == 157 || height == 773 || height == 205 || height == 208 || height == 210 || height == 211 || height == 215 || height == 221 || height == 231 || height == 255 || height == 273 || height == 293 || height == 310 || height == 654 )
-                return(0);
-        }
-        else if ( baseid == TRY )
-        {
-            if ( height == 1022 || height == 1023 || height == 1051 || height == 991 || height == 974 || height == 949 || height == 141 || height == 948 || height == 783 || height == 153 || height == 781 || height == 779 || height == 776 || height == 768 || height == 765 || height == 121 || height == 142 || height == 144 || height == 143 || height == 149 || height == 204 || height == 210 || height == 216 || height == 229 || height == 280 || height == 145 )
-                return(0);
-        }
-        else if ( baseid == NOK )
-        {
-            if ( height == 987 || height == 988 || height == 989 || height == 962 || height == 911 || height == 907 || height == 125 || height == 765 || height == 150 || height == 762 || height == 760 || height == 753 || height == 152 || height == 751 || height == 151 || height == 154 || height == 160 || height == 195 || height == 203 || height == 207 || height == 211 || height == 220 || height == 236 || height == 253 || height == 278 || height == 283 )
-                return(0);
-        }
-        else if ( baseid == ZAR )
-        {
-            if ( height == 979 || height == 980 || height == 981 || height == 956 || height == 937 || height == 906 || height == 905 || height == 122 || height == 756 || height == 754 || height == 752 || height == 749 || height == 742 || height == 739 || height == 120 || height == 151 || height == 153 || height == 157 || height == 159 || height == 206 || height == 213 || height == 216 || height == 222 || height == 277 || height == 287 || height == 215 )
-                return(0);
-        }
-        else if ( baseid == SEK )
-        {
-            if ( height == 960 || height == 961 || height == 962 || height == 943 || height == 925 || height == 896 || height == 147 || height == 894 || height == 759 || height == 751 || height == 749 || height == 742 || height == 740 || height == 716 || height == 123 || height == 148 || height == 150 || height == 151 || height == 157 || height == 199 || height == 200 || height == 201 || height == 206 || height == 256 || height == 257 || height == 268 )
-                return(0);
-        }
-        else if ( baseid == CZK )
-        {
-            if ( height < 1000 || height == 1084 || height == 1085 || height == 1086 || height == 778 || height == 1079 || height == 1054 || height == 1032 || height == 121 || height == 1030 || height == 182 || height == 876 || height == 873 || height == 871 || height == 184 || height == 862 || height == 185 || height == 861 || height == 186 || height == 838 || height == 238 || height == 242 || height == 246 || height == 248 || height == 250 || height == 251 || height == 256 || height == 282 || height == 322 || height == 343 || height == 433 || height == 323 || height == 276 )
-                return(0);
-        }
-        else if ( baseid == HUF )
-        {
-            if ( height < 2200 || height == 1531 || height == 1528 || height == 1530 || height == 1451 || height == 1448 || height == 1442 || height == 1418 || height == 1407 || height == 1406 || height == 1392 || height == 1391 || height == 1387 || height == 1383 || height == 1335 || height == 1337 || height == 1338 || height == 1649 || height == 2378 || height == 2376 || height == 2371 || height == 1330 || height == 2326 || height == 1344 || height == 2305 || height == 2304 || height == 2171 || height == 2168 || height == 2166 || height == 2156 || height == 2135 || height == 1343 || height == 1342 || height == 1341 || height == 1340 || height == 1339 || height == 1336 || height == 1334 || height == 1333 || height == 1346 || height == 1400 || height == 1525 || height == 1509 )
-                return(0);
-        }
-        else if ( baseid == DKK )
-        {
-            if ( height == 1241 || height == 945 || height == 898 || height == 894 || height == 892 || height == 866 || height == 857 || height == 853 || height == 834 || height == 812 || height == 792 || height == 784 || height == 778 || height == 783 || height == 1214 || height == 1186 || height == 1158 || height == 126 || height == 1156 || height == 329 || height == 1021 || height == 1016 || height == 1014 || height == 333 || height == 1003 || height == 1002 || height == 978 || height == 332 || height == 337 || height == 381 || height == 390 || height == 386 || height == 401 || height == 389 || height == 396 || height == 428 || height == 473 || height == 490 || height == 493 )
-                return(0);
-        }
-        else if ( baseid == ILS )
-        {
-            if ( height == 1017 || height == 1018 || height == 1019 || height == 1010 || height == 985 || height == 954 || height == 120 || height == 952 || height == 143 || height == 819 || height == 817 || height == 808 || height == 145 || height == 786 || height == 155 || height == 753 || height == 151 || height == 149 || height == 199 || height == 193 || height == 201 || height == 209 || height == 284 || height == 305 || height == 676 || height == 702 || height == 406 )
-                return(0);
-        }
-        else if ( baseid == MYR )
-        {
-            if ( height == 1020 || height == 1021 || height == 1022 || height == 1015 || height == 984 || height == 950 || height == 949 || height == 823 || height == 820 || height == 818 || height == 812 || height == 809 || height == 126 || height == 789 || height == 144 || height == 746 || height == 146 || height == 147 || height == 148 || height == 150 || height == 205 || height == 210 || height == 215 || height == 219 || height == 222 || height == 290 || height == 242 || height == 312 )
-                return(0);
-        }
-        else if ( baseid == PHP )
-        {
-            if ( height == 859 || height == 817 || height == 812 || height == 811 || height == 792 || height == 779 || height == 778 || height == 781 || height == 1154 || height == 1114 || height == 1077 || height == 1076 || height == 931 || height == 927 || height == 925 || height == 918 || height == 891 || height == 127 || height == 125 || height == 272 || height == 275 || height == 276 || height == 278 || height == 328 || height == 330 || height == 335 || height == 344 || height == 315 )
-                return(0);
-        }
-        else if ( baseid == KRW )
-        {
-            if ( height == 1021 || height == 1022 || height == 1023 || height == 1010 || height == 950 || height == 916 || height == 138 || height == 914 || height == 140 || height == 785 || height == 782 || height == 781 || height == 142 || height == 775 || height == 148 || height == 772 || height == 751 || height == 147 || height == 146 || height == 159 || height == 175 || height == 181 || height == 184 || height == 186 || height == 188 || height == 196 || height == 209 || height == 238 )
-                return(0);
-        }
-        else if ( baseid == RON )
-        {
-            if ( height == 1008 || height == 1009 || height == 1010 || height == 1003 || height == 973 || height == 940 || height == 939 || height == 806 || height == 802 || height == 800 || height == 793 || height == 789 || height == 768 || height == 123 || height == 141 || height == 143 || height == 144 || height == 150 || height == 197 || height == 200 || height == 202 || height == 217 || height == 240 || height == 276 )
-                return(0);
-        }
-        else if ( baseid == SGD )
-        {
-            if ( height == 1016 || height == 1017 || height == 1018 || height == 1010 || height == 984 || height == 951 || height == 950 || height == 801 || height == 798 || height == 792 || height == 788 || height == 122 || height == 769 || height == 120 || height == 158 || height == 160 || height == 164 || height == 169 || height == 229 || height == 234 || height == 246 || height == 297 || height == 299 || height == 316 || height == 233 )
-                return(0);
-        }
-        else if ( baseid == THB )
-        {
-            if ( height == 977 || height == 978 || height == 968 || height == 933 || height == 898 || height == 897 || height == 788 || height == 786 || height == 779 || height == 777 || height == 757 || height == 119 || height == 140 || height == 142 || height == 146 || height == 152 || height == 196 || height == 200 || height == 214 || height == 260 || height == 263 )
-                return(0);
-        }
-        else if ( baseid == BGN )
-        {
-            if ( height == 1044 || height == 1045 || height == 1046 || height == 1030 || height == 995 || height == 960 || height == 959 || height == 830 || height == 822 || height == 819 || height == 810 || height == 809 || height == 781 || height == 124 || height == 122 || height == 189 || height == 193 || height == 200 || height == 194 || height == 250 || height == 256 || height == 260 || height == 280 )
-                return(0);
-        }
-        else if ( baseid == HRK )
-        {
-            if ( height == 1027 || height == 1028 || height == 1029 || height == 1022 || height == 999 || height == 969 || height == 967 || height == 832 || height == 829 || height == 827 || height == 817 || height == 792 || height == 754 || height == 125 || height == 123 || height == 184 || height == 186 || height == 187 || height == 227 || height == 230 || height == 235 || height == 240 || height == 242 || height == 261 || height == 336 )
-                return(0);
-        }
-        else if ( baseid == IDR )
-        {
-            if ( height == 836 || height == 1036 || height == 837 || height == 720 || height == 715 || height == 714 || height == 696 || height == 695 || height == 694 || height == 693 || height == 119 || height == 689 || height == 120 || height == 669 || height == 123 || height == 662 || height == 122 || height == 634 || height == 121 || height == 609 || height == 124 || height == 174 || height == 603 || height == 595 || height == 166 || height == 176 || height == 589 || height == 172 || height == 587 || height == 179 || height == 239 || height == 175 || height == 245 || height == 260 )
-                return(0);
-        }
-    }
-    if ( script[offset] == opcode && opretlen < block.vtx[0].vout[n-1].scriptPubKey.size() )
-    {
-        if ( (num= komodo_issued_opreturn(base,txids,vouts,values,srcvalues,kmdheights,otherheights,baseids,rmd160s,&script[offset],opretlen,opcode == 'X')) > 0 )
-        {
-            for (i=1; i<n-1; i++)
-            {
-                if ( 0 && ASSETCHAINS_SYMBOL[0] != 0 && (sp= komodo_stateptrget(ASSETCHAINS_SYMBOL)) != 0 && strcmp(CURRENCIES[baseids[i-1]],ASSETCHAINS_SYMBOL) == 0 )
+                if ( (checktoshis= komodo_checkcommission((CBlock *)&block,height)) < 0 )
                 {
-                    int32_t rtflag = 0;
-                    while ( (sp->RTmask & (1LL << 32)) == 0 )
-                    {
-                        if ( rtflag == 0 )
-                            LogPrintf("[%s] skip checkdeposit.%s not RT %llx\n",ASSETCHAINS_SYMBOL,CURRENCIES[baseids[i-1]],(long long)sp->RTmask);
-                        sleep(60);
-                        rtflag = 1;
-                        //matched++;
-                        //continue;
-                    }
-                    if ( rtflag != 0 )
-                        LogPrintf("[%s] %s reached RT\n",ASSETCHAINS_SYMBOL,CURRENCIES[baseids[i-1]]);
-                }
-                if ( (pax= komodo_paxfinds(txids[i-1],vouts[i-1])) != 0 ) // finds... make sure right one
-                {
-                    pax->type = opcode;
-                    if ( opcode == 'I' && (pax_fiatstatus(&available,&deposited,&issued,&withdrawn,&approved,&redeemed,symbol) != 0 || available < pax->fiatoshis) )
-                    {
-                        LogPrintf("checkdeposit.[%s.%d]: skip %s %.8f when avail %.8f deposited %.8f, issued %.8f withdrawn %.8f approved %.8f redeemed %.8f\n",ASSETCHAINS_SYMBOL,height,symbol,dstr(pax->fiatoshis),dstr(available),dstr(deposited),dstr(issued),dstr(withdrawn),dstr(approved),dstr(redeemed));
-                        return(-1);
-                    }
-                    if ( pax->fiatoshis == block.vtx[0].vout[i].nValue )
-                    {
-                        matched++;
-                        if ( pax->marked != 0 && height >= 80820 )
-                        {
-                            LogPrintf(">>>>>>>>>>> %c errs.%d i.%d match %.8f vs %.8f paxmarked.%d kht.%d ht.%d [%s].%d\n",opcode,errs,i,dstr(opcode == 'I' ? pax->fiatoshis : pax->komodoshis),dstr(block.vtx[0].vout[i].nValue),pax->marked,pax->height,pax->otherheight,ASSETCHAINS_SYMBOL,height);
-                        }
-                        else
-                        {
-                        }
-                        if ( strcmp(ASSETCHAINS_SYMBOL,CURRENCIES[baseids[i-1]]) == 0 )
-                        {
-                            //check deposit validates AUD.1047 [3] 0.14585530 -> 0.01000000 (0.14585530 0.01000000 0.01000000)
-                            char destaddr[64],coinaddr[64]; uint8_t pubkey33[33];
-                            checktoshis = PAX_fiatdest(&seed,0,destaddr,pubkey33,coinaddr,pax->height,CURRENCIES[baseids[i-1]],pax->fiatoshis);
-                            //checktoshis = komodo_paxprice(&seed,pax->height,CURRENCIES[baseids[i-1]],(char *)"KMD",(uint64_t)pax->komodoshis);
-                            if ( komodo_paxcmp(CURRENCIES[baseids[i-1]],pax->height,pax->komodoshis,checktoshis,seed) < 0 )
-                            {
-                                LogPrintf("paxcmp FAIL when check deposit validates %s.%d [%d] %.8f -> %.8f (%.8f %.8f %.8f)\n",CURRENCIES[baseids[i-1]],height,i,dstr(srcvalues[i-1]),dstr(values[i-1]),dstr(pax->komodoshis),dstr(pax->fiatoshis),dstr(block.vtx[0].vout[i].nValue));
-                                return(-1);
-                            } //else LogPrintf("check deposit validates %s.%d [%d] %.8f -> %.8f (%.8f %.8f %.8f)\n",CURRENCIES[baseids[i-1]],height,i,dstr(srcvalues[i-1]),dstr(values[i-1]),dstr(pax->komodoshis),dstr(pax->fiatoshis),dstr(block.vtx[0].vout[i].nValue));
-                        }
-                    }
-                    else if ( strcmp(ASSETCHAINS_SYMBOL,CURRENCIES[baseids[i-1]]) == 0 )
-                    {
-                        for (j=0; j<32; j++)
-                            LogPrintf("%02x",((uint8_t *)&txids[i-1])[j]);
-                        LogPrintf(" cant paxfind %c txid [%d]\n",opcode,height);
-                        LogPrintf(">>>>>>>>>>> %c errs.%d i.%d match %.8f vs %.8f pax.%p [%s] ht.%d\n",opcode,errs,i,dstr(opcode == 'I' ? pax->fiatoshis : pax->komodoshis),dstr(block.vtx[0].vout[i].nValue),pax,ASSETCHAINS_SYMBOL,height);
-                        return(-1);
-                    }
-                }
-                else //if ( kmdheights[i-1] > 0 && otherheights[i-1] > 0 )
-                {
-                    hash = block.GetHash();
-                    for (j=0; j<n; j++)
-                        LogPrintf("%.8f ",dstr(block.vtx[0].vout[j].nValue));
-                    LogPrintf("vout values\n");
-                    for (j=0; j<32; j++)
-                        LogPrintf("%02x",((uint8_t *)&txids[i-1])[j]);
-                    LogPrintf(" kht.%d ht.%d %.8f %.8f couldnt find vout.[%d of %d] ht.%d %s for [%s]\n",kmdheights[i-1],otherheights[i-1],dstr(values[i-1]),dstr(srcvalues[i]),i,n,height,ASSETCHAINS_SYMBOL,CURRENCIES[baseids[i-1]]);
-                    if ( ASSETCHAINS_SYMBOL[0] != 0 || height >= activation )
-                        return(-1);
-                }
-            }
-            if ( ASSETCHAINS_SYMBOL[0] == 0 )
-            {
-                /*if ( height > 0 && (height < chainActive.Tip()->nHeight || (height >= chainActive.Tip()->nHeight && komodo_isrealtime(&ht) != 0)) && matched != num )
-                {
-                    LogPrintf("WOULD REJECT %s: ht.%d (%c) matched.%d vs num.%d tip.%d isRT.%d\n",symbol,height,opcode,matched,num,(int32_t)chainActive.Tip()->nHeight,komodo_isrealtime(&ht));
-                    // can easily happen depending on order of loading
-                    if ( height > 200000 )
-                    {
-                        LogPrintf("REJECT: ht.%d (%c) matched.%d vs num.%d\n",height,opcode,matched,num);
-                        return(-1);
-                    }
-                }*/ // disabled 'X' path
-            }
-            else
-            {
-                if ( height > 0 && (height < chainActive.Tip()->nHeight || (height >= chainActive.Tip()->nHeight && komodo_isrealtime(&ht) != 0)) && matched != num )
-                {
-                    LogPrintf("REJECT %s: ht.%d (%c) matched.%d vs num.%d tip.%d isRT.%d\n",symbol,height,opcode,matched,num,(int32_t)chainActive.Tip()->nHeight,komodo_isrealtime(&ht));
+                    LogPrintf("ht.%d checktoshis %.8f overflow.%d total %.8f strangeout.%d\n",height,dstr(checktoshis),overflow,dstr(total),strangeout);
                     return(-1);
                 }
             }
-        }
-        else
-        {
-            for (i=0; i<n; i++)
-                LogPrintf("%.8f ",dstr(block.vtx[0].vout[i].nValue));
-            LogPrintf("no opreturn entries to check ht.%d %s\n",height,ASSETCHAINS_SYMBOL);
-            if ( ASSETCHAINS_SYMBOL[0] != 0 || height >= activation )
+            if ( height > 1 && checktoshis == 0 )
+            {
+                checktoshis = ((uint64_t)GetBlockSubsidy(height, Params().GetConsensus()) - block.vtx[0].vout[0].nValue);
+                // some pools will need to change their pool fee to be (poolfee % - txfees)
+                //checktoshis += txn_count * 0.001; // rely on higher level validations to prevent emitting more coins than actual txfees
+            }
+            if ( height >= 2 && (overflow != 0 || total > checktoshis || strangeout != 0) )
+            {
+                LogPrintf("checkdeposit: ht.%d checktoshis %.8f overflow.%d total %.8f strangeout.%d\n",height,dstr(checktoshis),overflow,dstr(total),strangeout);
+                if ( strangeout != 0 )
+                    LogPrintf(">>>>>>>>>>>>> %s DUST ht.%d strangeout.%d notmatched.%d <<<<<<<<<\n",ASSETCHAINS_SYMBOL,height,strangeout,notmatched);
                 return(-1);
+            }
         }
-        //LogPrintf("opretlen.%d num.%d\n",opretlen,num);
-    }
-    else
-    {
-        for (i=0; i<opretlen&&i<100; i++)
-            LogPrintf("%02x",script[i]);
-        LogPrintf(" height.%d checkdeposit n.%d [%02x] [%c] %d opcode.%d len.%d ",height,n,script[0],script[offset],script[offset],opcode,opretlen);
-        LogPrintf("not proper vout with opreturn format %s ht.%d cmp.%d %d\n",ASSETCHAINS_SYMBOL,height,script[offset] == opcode,(int32_t)block.vtx[0].vout[n-1].scriptPubKey.size());
-        return(-1);
     }
     return(0);
 }
@@ -1033,11 +782,9 @@ const char *komodo_opreturn(int32_t height,uint64_t value,uint8_t *opretbuf,int3
     const char *typestr = "unknown";
     if ( ASSETCHAINS_SYMBOL[0] != 0 && komodo_baseid(ASSETCHAINS_SYMBOL) < 0 && opretbuf[0] != 'K' )
     {
-        //LogPrintf("komodo_opreturn skip %s\n",ASSETCHAINS_SYMBOL);
+        //printf("komodo_opreturn skip %s\n",ASSETCHAINS_SYMBOL);
         return("assetchain");
     }
-    //else if ( KOMODO_PAX == 0 )
-    //    return("nopax");
     memset(baseids,0xff,sizeof(baseids));
     memset(values,0,sizeof(values));
     memset(srcvalues,0,sizeof(srcvalues));
@@ -1048,8 +795,11 @@ const char *komodo_opreturn(int32_t height,uint64_t value,uint8_t *opretbuf,int3
     if ( opretbuf[0] == 'K' && opretlen != 40 )
     {
         komodo_kvupdate(opretbuf,opretlen,value);
+        return("kv");
     }
-    else if ( opretbuf[0] == 'D' )
+    else if ( ASSETCHAINS_SYMBOL[0] == 0 && KOMODO_PAX == 0 )
+        return("nopax");
+    if ( opretbuf[0] == 'D' )
     {
         tokomodo = 0;
         if ( opretlen == 38 ) // any KMD tx
@@ -1147,7 +897,9 @@ const char *komodo_opreturn(int32_t height,uint64_t value,uint8_t *opretbuf,int3
                 {
                     if ( baseids[i] < 0 )
                     {
-                        LogPrintf("%d of %d illegal baseid.%d\n",i,n,baseids[i]);
+                        static uint32_t counter;
+                        if ( counter++ < 0 )
+                            LogPrintf("%d of %d illegal baseid.%d, this can be ignored\n",i,n,baseids[i]);
                         continue;
                     }
                     komodo_address(coinaddr,60,&rmd160s[i*20],20);
@@ -1201,7 +953,7 @@ const char *komodo_opreturn(int32_t height,uint64_t value,uint8_t *opretbuf,int3
         komodo_address(coinaddr,addrtype,rmd160,20);
         checktoshis = PAX_fiatdest(&seed,tokomodo,destaddr,pubkey33,coinaddr,kmdheight,base,value);
         typestr = "withdraw";
-        //LogPrintf(" [%s] WITHDRAW %s.height.%d vs height.%d check %.8f/%.8f vs %.8f tokomodo.%d %d seed.%llx -> (%s) len.%d\n",ASSETCHAINS_SYMBOL,base,kmdheight,height,dstr(checktoshis),dstr(komodoshis),dstr(value),komodo_is_issuer(),strncmp(ASSETCHAINS_SYMBOL,base,strlen(base)) == 0,(long long)seed,coinaddr,opretlen);
+        //printf(" [%s] WITHDRAW %s.height.%d vs height.%d check %.8f/%.8f vs %.8f tokomodo.%d %d seed.%llx -> (%s) len.%d\n",ASSETCHAINS_SYMBOL,base,kmdheight,height,dstr(checktoshis),dstr(komodoshis),dstr(value),komodo_is_issuer(),strncmp(ASSETCHAINS_SYMBOL,base,strlen(base)) == 0,(long long)seed,coinaddr,opretlen);
         didstats = 0;
         //if ( komodo_paxcmp(base,kmdheight,komodoshis,checktoshis,seed) == 0 )
         {
@@ -1245,13 +997,13 @@ const char *komodo_opreturn(int32_t height,uint64_t value,uint8_t *opretbuf,int3
             {
                 //for (j=0; j<32; j++)
                 //    LogPrintf("%02x",((uint8_t *)&txids[i])[j]);
-                //LogPrintf(" v%d %.8f %.8f k.%d ht.%d base.%d\n",vouts[i],dstr(values[i]),dstr(srcvalues[i]),kmdheights[i],otherheights[i],baseids[i]);
+                //printf(" v%d %.8f %.8f k.%d ht.%d base.%d\n",vouts[i],dstr(values[i]),dstr(srcvalues[i]),kmdheights[i],otherheights[i],baseids[i]);
                 if ( baseids[i] < 0 )
                 {
                     for (i=0; i<opretlen; i++)
                         LogPrintf("%02x",opretbuf[i]);
                     LogPrintf(" opret[%c] else path tokomodo.%d ht.%d before %.8f opretlen.%d\n",opretbuf[0],tokomodo,height,dstr(komodo_paxtotal()),opretlen);
-                    //LogPrintf("baseids[%d] %d\n",i,baseids[i]);
+                    //printf("baseids[%d] %d\n",i,baseids[i]);
                     if ( (pax= komodo_paxfind(txids[i],vouts[i],'W')) != 0 || (pax= komodo_paxfind(txids[i],vouts[i],'X')) != 0 )
                     {
                         baseids[i] = komodo_baseid(pax->symbol);
@@ -1263,7 +1015,7 @@ const char *komodo_opreturn(int32_t height,uint64_t value,uint8_t *opretbuf,int3
                 didstats = 0;
                 seed = 0;
                 checktoshis = komodo_paxprice(&seed,kmdheights[i],CURRENCIES[baseids[i]],(char *)"KMD",(uint64_t)values[i]);
-                //LogPrintf("PAX_fiatdest ht.%d price %s %.8f -> KMD %.8f vs %.8f\n",kmdheights[i],CURRENCIES[baseids[i]],(double)values[i]/COIN,(double)srcvalues[i]/COIN,(double)checktoshis/COIN);
+                //printf("PAX_fiatdest ht.%d price %s %.8f -> KMD %.8f vs %.8f\n",kmdheights[i],CURRENCIES[baseids[i]],(double)values[i]/COIN,(double)srcvalues[i]/COIN,(double)checktoshis/COIN);
                 if ( srcvalues[i] == checktoshis )
                 {
                     if ( (pax= komodo_paxfind(txids[i],vouts[i],'A')) == 0 )
@@ -1281,9 +1033,9 @@ const char *komodo_opreturn(int32_t height,uint64_t value,uint8_t *opretbuf,int3
                         {
                             basesp->approved += values[i];
                             didstats = 1;
-                            //LogPrintf("pax.%p ########### %p approved %s += %.8f -> %.8f/%.8f kht.%d %d\n",pax,basesp,CURRENCIES[baseids[i]],dstr(values[i]),dstr(srcvalues[i]),dstr(checktoshis),kmdheights[i],otherheights[i]);
+                            //printf("pax.%p ########### %p approved %s += %.8f -> %.8f/%.8f kht.%d %d\n",pax,basesp,CURRENCIES[baseids[i]],dstr(values[i]),dstr(srcvalues[i]),dstr(checktoshis),kmdheights[i],otherheights[i]);
                         }
-                        //LogPrintf(" i.%d (%s) <- %.8f ADDFLAG APPROVED\n",i,coinaddr,dstr(values[i]));
+                        //printf(" i.%d (%s) <- %.8f ADDFLAG APPROVED\n",i,coinaddr,dstr(values[i]));
                     }
                     else if ( pax->didstats == 0 && srcvalues[i] != 0 )
                     {
@@ -1291,7 +1043,7 @@ const char *komodo_opreturn(int32_t height,uint64_t value,uint8_t *opretbuf,int3
                         {
                             basesp->approved += values[i];
                             didstats = 1;
-                            //LogPrintf("pax.%p ########### %p approved %s += %.8f -> %.8f/%.8f kht.%d %d\n",pax,basesp,CURRENCIES[baseids[i]],dstr(values[i]),dstr(srcvalues[i]),dstr(checktoshis),kmdheights[i],otherheights[i]);
+                            //printf("pax.%p ########### %p approved %s += %.8f -> %.8f/%.8f kht.%d %d\n",pax,basesp,CURRENCIES[baseids[i]],dstr(values[i]),dstr(srcvalues[i]),dstr(checktoshis),kmdheights[i],otherheights[i]);
                         }
                     } //else LogPrintf(" i.%d of n.%d pax.%p baseids[] %d\n",i,n,pax,baseids[i]);
                     if ( (pax= komodo_paxfind(txids[i],vouts[i],'A')) != 0 )
@@ -1302,12 +1054,12 @@ const char *komodo_opreturn(int32_t height,uint64_t value,uint8_t *opretbuf,int3
                         if ( didstats != 0 )
                             pax->didstats = 1;
                         //if ( strcmp(CURRENCIES[baseids[i]],ASSETCHAINS_SYMBOL) == 0 )
-                        //LogPrintf(" i.%d approved.%d <<<<<<<<<<<<< APPROVED %p\n",i,kmdheights[i],pax);
+                        //printf(" i.%d approved.%d <<<<<<<<<<<<< APPROVED %p\n",i,kmdheights[i],pax);
                     }
                 }
             }
         } //else LogPrintf("n.%d from opreturns\n",n);
-        //LogPrintf("extra.[%d] after %.8f\n",n,dstr(komodo_paxtotal()));
+        //printf("extra.[%d] after %.8f\n",n,dstr(komodo_paxtotal()));
     }
     else if ( height < 236000 && opretbuf[0] == 'X' && ASSETCHAINS_SYMBOL[0] == 0 )
     {
@@ -1349,26 +1101,310 @@ const char *komodo_opreturn(int32_t height,uint64_t value,uint8_t *opretbuf,int3
     return(typestr);
 }
 
+int32_t komodo_parsestatefiledata(struct komodo_state *sp,uint8_t *filedata,long *fposp,long datalen,char *symbol,char *dest);
+
+void komodo_stateind_set(struct komodo_state *sp,uint32_t *inds,int32_t n,uint8_t *filedata,long datalen,char *symbol,char *dest)
+{
+    uint8_t func; long lastK,lastT,lastN,lastV,fpos,lastfpos; int32_t i,count,doissue,iter,numn,numv,numN,numV,numR; uint32_t tmp,prevpos100,offset;
+    count = numR = numN = numV = numn = numv = 0;
+    lastK = lastT = lastN = lastV = -1;
+    for (iter=0; iter<2; iter++)
+    {
+        for (lastfpos=fpos=prevpos100=i=0; i<n; i++)
+        {
+            tmp = inds[i];
+            if ( (i % 100) == 0 )
+                prevpos100 = tmp;
+            else
+            {
+                func = (tmp & 0xff);
+                offset = (tmp >> 8);
+                fpos = prevpos100 + offset;
+                if ( lastfpos >= datalen || (filedata[lastfpos] != func && func != 0) )
+                    LogPrintf("i.%d/n.%d lastfpos.%ld >= datalen.%ld or [%d] != func.%d\n",i,n,lastfpos,datalen,filedata[lastfpos],func);
+                else if ( iter == 0 )
+                {
+                    switch ( func )
+                    {
+                        default: case 'P': case 'U': case 'D':
+                            inds[i] &= 0xffffff00;
+                            break;
+                        case 'K':
+                            lastK = lastfpos;
+                            inds[i] &= 0xffffff00;
+                            break;
+                        case 'T':
+                            lastT = lastfpos;
+                            inds[i] &= 0xffffff00;
+                            break;
+                        case 'N':
+                            lastN = lastfpos;
+                            numN++;
+                            break;
+                        case 'V':
+                            lastV = lastfpos;
+                            numV++;
+                            break;
+                        case 'R':
+                            numR++;
+                            break;
+                    }
+                }
+                else
+                {
+                    doissue = 0;
+                    if ( func == 'K' )
+                    {
+                        if ( lastK == lastfpos )
+                            doissue = 1;
+                    }
+                    else if ( func == 'T' )
+                    {
+                        if ( lastT == lastfpos )
+                            doissue = 1;
+                    }
+                    else if ( func == 'N' )
+                    {
+                        if ( numn > numN-128 )
+                            doissue = 1;
+                        numn++;
+                    }
+                    else if ( func == 'V' )
+                    {
+                        if ( KOMODO_PAX != 0 && numv > numV-1440 )
+                            doissue = 1;
+                        numv++;
+                    }
+                    else if ( func == 'R' )
+                        doissue = 1;
+                    if ( doissue != 0 )
+                    {
+                        //printf("issue %c total.%d lastfpos.%ld\n",func,count,lastfpos);
+                        komodo_parsestatefiledata(sp,filedata,&lastfpos,datalen,symbol,dest);
+                        count++;
+                    }
+                }
+            }
+            lastfpos = fpos;
+        }
+    }
+    LogPrintf("numR.%d numV.%d numN.%d count.%d\n",numR,numV,numN,count);
+    /*else if ( func == 'K' ) // KMD height: stop after 1st
+    else if ( func == 'T' ) // KMD height+timestamp: stop after 1st
+        
+    else if ( func == 'N' ) // notarization, scan backwards 1440+ blocks;
+    else if ( func == 'V' ) // price feed: can stop after 1440+
+    else if ( func == 'R' ) // opreturn:*/
+}
+
+void *OS_loadfile(char *fname,uint8_t **bufp,long *lenp,long *allocsizep)
+{
+    FILE *fp;
+    long  filesize,buflen = *allocsizep;
+    uint8_t *buf = *bufp;
+    *lenp = 0;
+    if ( (fp= fopen(fname,"rb")) != 0 )
+    {
+        fseek(fp,0,SEEK_END);
+        filesize = ftell(fp);
+        if ( filesize == 0 )
+        {
+            fclose(fp);
+            *lenp = 0;
+            LogPrintf("OS_loadfile null size.(%s)\n",fname);
+            return(0);
+        }
+        if ( filesize > buflen )
+        {
+            *allocsizep = filesize;
+            *bufp = buf = (uint8_t *)realloc(buf,(long)*allocsizep+64);
+        }
+        rewind(fp);
+        if ( buf == 0 )
+            LogPrintf("Null buf ???\n");
+        else
+        {
+            if ( fread(buf,1,(long)filesize,fp) != (unsigned long)filesize )
+                LogPrintf("error reading filesize.%ld\n",(long)filesize);
+            buf[filesize] = 0;
+        }
+        fclose(fp);
+        *lenp = filesize;
+        //printf("loaded.(%s)\n",buf);
+    } //else LogPrintf("OS_loadfile couldnt load.(%s)\n",fname);
+    return(buf);
+}
+
+uint8_t *OS_fileptr(long *allocsizep,char *fname)
+{
+    long filesize = 0; uint8_t *buf = 0; void *retptr;
+    *allocsizep = 0;
+    retptr = OS_loadfile(fname,&buf,&filesize,allocsizep);
+    return((uint8_t *)retptr);
+}
+
+long komodo_stateind_validate(struct komodo_state *sp,char *indfname,uint8_t *filedata,long datalen,uint32_t *prevpos100p,uint32_t *indcounterp,char *symbol,char *dest)
+{
+    FILE *fp; long fsize,lastfpos=0,fpos=0; uint8_t *inds,func; int32_t i,n; uint32_t offset,tmp,prevpos100 = 0;
+    *indcounterp = *prevpos100p = 0;
+    if ( (inds= OS_fileptr(&fsize,indfname)) != 0 )
+    {
+        lastfpos = 0;
+        LogPrintf("inds.%p validate %s fsize.%ld datalen.%ld n.%ld lastfpos.%ld\n",inds,indfname,fsize,datalen,fsize / sizeof(uint32_t),lastfpos);
+        if ( (fsize % sizeof(uint32_t)) == 0 )
+        {
+            n = (int32_t)(fsize / sizeof(uint32_t));
+            for (i=0; i<n; i++)
+            {
+                memcpy(&tmp,&inds[i * sizeof(uint32_t)],sizeof(uint32_t));
+                if ( 0 && i > n-10 )
+                    LogPrintf("%d: tmp.%08x [%c] prevpos100.%u\n",i,tmp,tmp&0xff,prevpos100);
+                if ( (i % 100) == 0 )
+                    prevpos100 = tmp;
+                else
+                {
+                    func = (tmp & 0xff);
+                    offset = (tmp >> 8);
+                    fpos = prevpos100 + offset;
+                    if ( lastfpos >= datalen || filedata[lastfpos] != func )
+                    {
+                        LogPrintf("validate.%d error (%u %d) prev100 %u -> fpos.%ld datalen.%ld [%d] (%c) vs (%c) lastfpos.%ld\n",i,offset,func,prevpos100,fpos,datalen,lastfpos < datalen ? filedata[lastfpos] : -1,func,filedata[lastfpos],lastfpos);
+                        return(-1);
+                    }
+                }
+                lastfpos = fpos;
+            }
+            *indcounterp = n;
+            *prevpos100p = prevpos100;
+            if ( sp != 0 )
+                komodo_stateind_set(sp,(uint32_t *)inds,n,filedata,fpos,symbol,dest);
+            //printf("free inds.%p %s validated[%d] fpos.%ld datalen.%ld, offset %ld vs fsize.%ld\n",inds,indfname,i,fpos,datalen,i * sizeof(uint32_t),fsize);
+            free(inds);
+            return(fpos);
+        } else LogPrintf("wrong filesize %s %ld\n",indfname,fsize);
+    }
+    free(inds);
+    LogPrintf("indvalidate return -1\n");
+    return(-1);
+}
+
+long komodo_indfile_update(FILE *indfp,uint32_t *prevpos100p,long lastfpos,long newfpos,uint8_t func,uint32_t *indcounterp)
+{
+    uint32_t tmp;
+    if ( indfp != 0 )
+    {
+        tmp = ((uint32_t)(newfpos - *prevpos100p) << 8) | (func & 0xff);
+        if ( ftell(indfp)/sizeof(uint32_t) != *indcounterp )
+            LogPrintf("indfp fpos %ld -> ind.%ld vs counter.%u\n",ftell(indfp),ftell(indfp)/sizeof(uint32_t),*indcounterp);
+        //LogPrintf("ftell.%ld indcounter.%u lastfpos.%ld newfpos.%ld func.%02x\n",ftell(indfp),*indcounterp,lastfpos,newfpos,func);
+        fwrite(&tmp,1,sizeof(tmp),indfp), (*indcounterp)++;
+        if ( (*indcounterp % 100) == 0 )
+        {
+            *prevpos100p = (uint32_t)newfpos;
+            fwrite(prevpos100p,1,sizeof(*prevpos100p),indfp), (*indcounterp)++;
+        }
+    }
+    return(newfpos);
+}
+
+int32_t komodo_faststateinit(struct komodo_state *sp,char *fname,char *symbol,char *dest)
+{
+    FILE *indfp; char indfname[1024]; uint8_t *filedata; long validated=-1,datalen,fpos,lastfpos; uint32_t tmp,prevpos100,indcounter,starttime; int32_t func,finished = 0;
+    starttime = (uint32_t)time(NULL);
+    safecopy(indfname,fname,sizeof(indfname)-4);
+    strcat(indfname,".ind");
+    if ( (filedata= OS_fileptr(&datalen,fname)) != 0 )
+    {
+        if ( 1 )//datalen >= (1LL << 32) || GetArg("-genind",0) != 0 || (validated= komodo_stateind_validate(0,indfname,filedata,datalen,&prevpos100,&indcounter,symbol,dest)) < 0 )
+        {
+            lastfpos = fpos = 0;
+            indcounter = prevpos100 = 0;
+            if ( (indfp= fopen(indfname,"wb")) != 0 )
+                fwrite(&prevpos100,1,sizeof(prevpos100),indfp), indcounter++;
+            LogPrintf("processing %s %ldKB, validated.%ld\n",fname,datalen/1024,validated);
+            while ( (func= komodo_parsestatefiledata(sp,filedata,&fpos,datalen,symbol,dest)) >= 0 )
+            {
+                lastfpos = komodo_indfile_update(indfp,&prevpos100,lastfpos,fpos,func,&indcounter);
+            }
+            if ( indfp != 0 )
+            {
+                fclose(indfp);
+                if ( (fpos= komodo_stateind_validate(0,indfname,filedata,datalen,&prevpos100,&indcounter,symbol,dest)) < 0 )
+                    LogPrintf("unexpected komodostate.ind validate failure %s datalen.%ld\n",indfname,datalen);
+                else LogPrintf("%s validated fpos.%ld\n",indfname,fpos);
+            }
+            finished = 1;
+            LogPrintf("took %d seconds to process %s %ldKB\n",(int32_t)(time(NULL)-starttime),fname,datalen/1024);
+        }
+        else if ( validated > 0 )
+        {
+            if ( (indfp= fopen(indfname,"rb+")) != 0 )
+            {
+                lastfpos = fpos = validated;
+                LogPrintf("datalen.%ld validated %ld -> indcounter %u, prevpos100 %u offset.%ld\n",datalen,validated,indcounter,prevpos100,indcounter * sizeof(uint32_t));
+                if ( fpos < datalen )
+                {
+                    fseek(indfp,indcounter * sizeof(uint32_t),SEEK_SET);
+                    if ( ftell(indfp) == indcounter * sizeof(uint32_t) )
+                    {
+                        while ( (func= komodo_parsestatefiledata(sp,filedata,&fpos,datalen,symbol,dest)) >= 0 )
+                        {
+                            lastfpos = komodo_indfile_update(indfp,&prevpos100,lastfpos,fpos,func,&indcounter);
+                            if ( lastfpos != fpos )
+                                LogPrintf("unexpected lastfpos.%ld != %ld\n",lastfpos,fpos);
+                        }
+                    }
+                    fclose(indfp);
+                }
+                if ( komodo_stateind_validate(sp,indfname,filedata,datalen,&prevpos100,&indcounter,symbol,dest) < 0 )
+                    LogPrintf("unexpected komodostate.ind validate failure %s datalen.%ld\n",indfname,datalen);
+                else
+                {
+                    LogPrintf("%s validated updated from validated.%ld to %ld new.[%ld] -> indcounter %u, prevpos100 %u offset.%ld | elapsed %d seconds\n",indfname,validated,fpos,fpos-validated,indcounter,prevpos100,indcounter * sizeof(uint32_t),(int32_t)(time(NULL) - starttime));
+                    finished = 1;
+                }
+            }
+        } else LogPrintf("komodo_faststateinit unexpected case\n");
+        free(filedata);
+        return(finished == 1);
+    }
+    return(-1);
+}
+
+uint64_t komodo_interestsum();
+
 void komodo_passport_iteration()
 {
-    static long lastpos[34]; static char userpass[33][1024]; static uint32_t lasttime;
-    int32_t maxseconds = 30;
-    FILE *fp; int32_t baseid,n,ht,isrealtime,expired,refid,blocks,longest; struct komodo_state *sp,*refsp; char *retstr,fname[512],*base,symbol[16],dest[16]; uint32_t buf[3],starttime; cJSON *infoobj,*result; uint64_t RTmask = 0;
-    //LogPrintf("PASSPORT.(%s)\n",ASSETCHAINS_SYMBOL);
+    static long lastpos[34]; static char userpass[33][1024]; static uint32_t lasttime,callcounter,lastinterest;
+    int32_t maxseconds = 10;
+    FILE *fp; uint8_t *filedata; long fpos,datalen,lastfpos; int32_t baseid,limit,n,ht,isrealtime,expired,refid,blocks,longest; struct komodo_state *sp,*refsp; char *retstr,fname[512],*base,symbol[KOMODO_ASSETCHAIN_MAXLEN],dest[KOMODO_ASSETCHAIN_MAXLEN]; uint32_t buf[3],starttime; cJSON *infoobj,*result; uint64_t RTmask = 0; //CBlockIndex *pindex;
     expired = 0;
     while ( KOMODO_INITDONE == 0 )
     {
         LogPrintf("[%s] PASSPORT iteration waiting for KOMODO_INITDONE\n",ASSETCHAINS_SYMBOL);
+#ifdef WIN32
+        boost::this_thread::sleep(boost::posix_time::milliseconds(3000));
+#else
         sleep(3);
+#endif
+    }
+    if ( komodo_chainactive_timestamp() > lastinterest )
+    {
+        if ( ASSETCHAINS_SYMBOL[0] == 0 )
+            komodo_interestsum();
+        //komodo_longestchain();
+        lastinterest = komodo_chainactive_timestamp();
     }
     refsp = komodo_stateptr(symbol,dest);
-    if ( ASSETCHAINS_SYMBOL[0] == 0 )
+    if ( ASSETCHAINS_SYMBOL[0] == 0 || strcmp(ASSETCHAINS_SYMBOL,"KMDCC") == 0 )
     {
         refid = 33;
+        limit = 10000000;
         jumblr_iteration();
     }
     else
     {
+        limit = 10000000;
         refid = komodo_baseid(ASSETCHAINS_SYMBOL)+1; // illegal base -> baseid.-1 -> 0
         if ( refid == 0 )
         {
@@ -1382,17 +1418,9 @@ void komodo_passport_iteration()
         return;
     }*/
     starttime = (uint32_t)time(NULL);
-    if ( starttime == lasttime )
-    {
-#ifndef WIN32
-        usleep(1000);
-#else
-        Sleep(1);
-#endif
-        return;
-    }
+    if ( callcounter++ < 1 )
+        limit = 10000;
     lasttime = starttime;
-    //LogPrintf("PASSPORT %s refid.%d\n",ASSETCHAINS_SYMBOL,refid);
     for (baseid=32; baseid>=0; baseid--)
     {
         if ( time(NULL) >= starttime+maxseconds )
@@ -1400,43 +1428,56 @@ void komodo_passport_iteration()
         sp = 0;
         isrealtime = 0;
         base = (char *)CURRENCIES[baseid];
-        if ( baseid+1 != refid )
+        //printf("PASSPORT %s baseid+1 %d refid.%d\n",ASSETCHAINS_SYMBOL,baseid+1,refid);
+        if ( baseid+1 != refid ) // only need to import state from a different coin
         {
-            if ( baseid == 32 || ASSETCHAINS_SYMBOL[0] == 0 )
+            if ( baseid == 32 ) // only care about KMD's state
             {
                 refsp->RTmask &= ~(1LL << baseid);
                 komodo_statefname(fname,baseid<32?base:(char *)"",(char *)"komodostate");
                 komodo_nameset(symbol,dest,base);
                 sp = komodo_stateptrget(symbol);
                 n = 0;
-                if ( (fp= fopen(fname,"rb")) != 0 && sp != 0 )
+                if ( lastpos[baseid] == 0 && (filedata= OS_fileptr(&datalen,fname)) != 0 )
+                {
+                    fpos = 0;
+                    LogPrintf("%s processing %s %ldKB\n",ASSETCHAINS_SYMBOL,fname,datalen/1024);
+                    while ( komodo_parsestatefiledata(sp,filedata,&fpos,datalen,symbol,dest) >= 0 )
+                        lastfpos = fpos;
+                    LogPrintf("%s took %d seconds to process %s %ldKB\n",ASSETCHAINS_SYMBOL,(int32_t)(time(NULL)-starttime),fname,datalen/1024);
+                    lastpos[baseid] = lastfpos;
+                    free(filedata), filedata = 0;
+                    datalen = 0;
+                }
+                else if ( (fp= fopen(fname,"rb")) != 0 && sp != 0 )
                 {
                     fseek(fp,0,SEEK_END);
+                    //LogPrintf("couldnt OS_fileptr(%s), freading %ldKB\n",fname,ftell(fp)/1024);
                     if ( ftell(fp) > lastpos[baseid] )
                     {
                         if ( ASSETCHAINS_SYMBOL[0] != 0 )
                             LogPrintf("%s passport refid.%d %s fname.(%s) base.%s %ld %ld\n",ASSETCHAINS_SYMBOL,refid,symbol,fname,base,ftell(fp),lastpos[baseid]);
                         fseek(fp,lastpos[baseid],SEEK_SET);
-                        while ( komodo_parsestatefile(sp,fp,symbol,dest) >= 0 && n < 1000 )
+                        while ( komodo_parsestatefile(sp,fp,symbol,dest) >= 0 && n < limit )
                         {
-                            if ( n == 999 )
+                            if ( n == limit-1 )
                             {
                                 if ( time(NULL) < starttime+maxseconds )
                                     n = 0;
                                 else
                                 {
-                                    //LogPrintf("expire passport loop %s -> %s at %ld\n",ASSETCHAINS_SYMBOL,base,lastpos[baseid]);
+                                    //printf("expire passport loop %s -> %s at %ld\n",ASSETCHAINS_SYMBOL,base,lastpos[baseid]);
                                     expired++;
                                 }
                             }
                             n++;
                         }
                         lastpos[baseid] = ftell(fp);
-                        if ( lastpos[baseid] == 0 && strcmp(symbol,"KMD") == 0 )
+                        if ( 0 && lastpos[baseid] == 0 && strcmp(symbol,"KMD") == 0 )
                             LogPrintf("from.(%s) lastpos[%s] %ld isrt.%d\n",ASSETCHAINS_SYMBOL,CURRENCIES[baseid],lastpos[baseid],komodo_isrealtime(&ht));
                     } //else LogPrintf("%s.%ld ",CURRENCIES[baseid],ftell(fp));
                     fclose(fp);
-                } //else LogPrintf("error.(%s) %p\n",fname,sp);
+                } else LogPrintf("load error.(%s) %p\n",fname,sp);
                 komodo_statefname(fname,baseid<32?base:(char *)"",(char *)"realtime");
                 if ( (fp= fopen(fname,"rb")) != 0 )
                 {
@@ -1462,7 +1503,7 @@ void komodo_passport_iteration()
             komodo_statefname(fname,baseid<32?base:(char *)"",(char *)"realtime");
             if ( (fp= fopen(fname,"wb")) != 0 )
             {
-                buf[0] = (uint32_t)chainActive.Tip()->nHeight;
+                buf[0] = (uint32_t)chainActive.LastTip()->GetHeight();
                 buf[1] = (uint32_t)komodo_longestchain();
                 if ( buf[0] != 0 && buf[0] == buf[1] )
                 {
@@ -1480,12 +1521,12 @@ void komodo_passport_iteration()
         if ( sp != 0 && isrealtime == 0 )
             refsp->RTbufs[0][2] = 0;
     }
-    komodo_paxtotal();
+    //komodo_paxtotal(); // calls komodo_isrealtime(), which calls komodo_longestchain()
     refsp->RTmask |= RTmask;
     if ( expired == 0 && KOMODO_PASSPORT_INITDONE == 0 )
     {
         KOMODO_PASSPORT_INITDONE = 1;
-        LogPrintf("done PASSPORT %s refid.%d\n",ASSETCHAINS_SYMBOL,refid);
+        LogPrintf("READY for %s RPC calls at %u! done PASSPORT %s refid.%d\n",ASSETCHAINS_SYMBOL,(uint32_t)time(NULL),ASSETCHAINS_SYMBOL,refid);
     }
 }
 

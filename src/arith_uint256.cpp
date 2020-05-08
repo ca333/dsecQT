@@ -1,5 +1,5 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2014 The Komodo developers
+// Copyright (c) 2009-2014 The Bitcoin developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -112,7 +112,7 @@ int base_uint<BITS>::CompareTo(const base_uint<BITS>& b) const
 {
     if ( (uint64_t)pn < 0x1000 || (uint64_t)b.pn <= 0x1000 )
     {
-        LogPrintf("CompareTo null %p or %p\n",pn,b.pn);
+        //LogPrintf("CompareTo null %p or %p\n",pn,b.pn);
         return(0);
     }
     for (int i = WIDTH - 1; i >= 0; i--) {

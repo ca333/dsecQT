@@ -1,5 +1,5 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2014 The Komodo Core developers
+// Copyright (c) 2009-2014 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -9,7 +9,9 @@
 #include "random.h"
 #include "uint256.h"
 #include "util.h"
-
+#ifdef _WIN32
+#undef __cpuid
+#endif
 #include <boost/thread.hpp>
 #include <boost/tuple/tuple_comparison.hpp>
 
@@ -45,7 +47,7 @@ public:
     {
         // DoS prevention: limit cache size to less than 10MB
         // (~200 bytes per cache entry times 50,000 entries)
-        // Since there are a maximum of 20,000 signature operations per block
+        // Since there can be no more than 20,000 signature operations per block
         // 50,000 is a reasonable default.
         int64_t nMaxCacheSize = GetArg("-maxsigcachesize", 50000);
         if (nMaxCacheSize <= 0) return;

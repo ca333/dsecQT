@@ -1,4 +1,4 @@
-// Copyright (c) 2011-2016 The Komodo Core developers
+// Copyright (c) 2011-2016 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -7,9 +7,11 @@
 #endif
 
 #include "komodooceangui.h"
+#include "komodo_defs.h"
 
-extern char ASSETCHAINS_SYMBOL[16];
-extern int32_t ASSETCHAIN_INIT;
+#define KOMODO_ASSETCHAIN_MAXLEN 65
+extern char ASSETCHAINS_SYMBOL[KOMODO_ASSETCHAIN_MAXLEN];
+extern uint32_t ASSETCHAIN_INIT;
 extern std::string NOTARY_PUBKEY;
 void komodo_passport_iteration();
 
@@ -29,10 +31,12 @@ void komodo_passport_iteration();
 #ifdef ENABLE_WALLET
 #include "paymentserver.h"
 #include "walletmodel.h"
+#include "walletframe.h"
+#include "walletview.h"
 #endif
 
 #include "init.h"
-#include "rpcserver.h"
+#include "rpc/server.h"
 #include "scheduler.h"
 #include "ui_interface.h"
 #include "util.h"
@@ -331,16 +335,16 @@ void KomodoCore::shutdown()
     try
     {
         qDebug() << __func__ << ": Running Shutdown in thread";
-
         if ( ASSETCHAINS_SYMBOL[0] == 0 )
         {
-            komodo_passport_iteration();
+            if (!ShutdownRequested()) komodo_passport_iteration();
             MilliSleep(1000);
         } else MilliSleep(1000);
 
         Interrupt(threadGroup);
         threadGroup.join_all();
         Shutdown();
+
         qDebug() << __func__ << ": Shutdown finished";
         Q_EMIT shutdownResult();
     } catch (const std::exception& e) {
@@ -388,14 +392,19 @@ KomodoApplication::~KomodoApplication()
 
     delete window;
     window = 0;
+    qDebug() << __func__ << ": Deleted window";
 #ifdef ENABLE_WALLET
     delete paymentServer;
     paymentServer = 0;
+    qDebug() << __func__ << ": Deleted paymentServer";
 #endif
     delete optionsModel;
     optionsModel = 0;
+    qDebug() << __func__ << ": Deleted optionsModel";
+
     delete platformStyle;
     platformStyle = 0;
+    qDebug() << __func__ << ": Deleted platformStyle";
 }
 
 #ifdef ENABLE_WALLET
@@ -500,7 +509,9 @@ void KomodoApplication::initializeResult(bool success)
         // Log this only after AppInitMain finishes, as then logging setup is guaranteed complete
         qWarning() << "Platform customization:" << platformStyle->getName();
 #ifdef ENABLE_WALLET
+    #ifdef ENABLE_BIP70
         PaymentServer::LoadRootCAs();
+    #endif
         paymentServer->setOptionsModel(optionsModel);
 #endif
 
@@ -515,9 +526,11 @@ void KomodoApplication::initializeResult(bool success)
 
             window->addWallet(KomodoOceanGUI::DEFAULT_WALLET, walletModel);
             window->setCurrentWallet(KomodoOceanGUI::DEFAULT_WALLET);
-
+            
+            #ifdef ENABLE_BIP70
             connect(walletModel, SIGNAL(coinsSent(CWallet*,SendCoinsRecipient,QByteArray)),
                              paymentServer, SLOT(fetchPaymentACK(CWallet*,const SendCoinsRecipient&,QByteArray)));
+            #endif
         }
 #endif
 
@@ -537,6 +550,8 @@ void KomodoApplication::initializeResult(bool success)
         // komodo: URIs or payment requests:
         connect(paymentServer, SIGNAL(receivedPaymentRequest(SendCoinsRecipient)),
                          window, SLOT(handlePaymentRequest(SendCoinsRecipient)));
+        /*connect(paymentServer, SIGNAL(receivedZPaymentRequest(SendCoinsRecipient)),
+                         window, SLOT(handleZPaymentRequest(SendCoinsRecipient)));*/
         connect(window, SIGNAL(receivedURI(QString)),
                          paymentServer, SLOT(handleURIOrFile(QString)));
         connect(paymentServer, SIGNAL(message(QString,QString,unsigned int)),
@@ -637,15 +652,15 @@ int main(int argc, char *argv[])
         return EXIT_SUCCESS;
     }
 
-        void komodo_args();
-        komodo_args();
-        LogPrintf("call komodo_args NOTARY_PUBKEY.(%s)\n",NOTARY_PUBKEY.c_str());
+        void komodo_args(char *argv0);
+        komodo_args(argv[0]);
+        LogPrintf("call komodo_args.(%s) NOTARY_PUBKEY.(%s)\n",argv[0],NOTARY_PUBKEY.c_str());
         while ( ASSETCHAIN_INIT == 0 )
         {
             //if ( komodo_is_issuer() != 0 )
             //    komodo_passport_iteration();
 #ifdef WIN32
-            Sleep(1*1000);
+            boost::this_thread::sleep_for(boost::chrono::seconds(1));
 #else
             sleep(1);
 #endif
@@ -743,9 +758,7 @@ int main(int argc, char *argv[])
     if (GetBoolArg("-splash", DEFAULT_SPLASHSCREEN) && !GetBoolArg("-min", false))
         app.createSplashScreen(networkStyle.data());
 
-
-
-
+    SoftSetBoolArg("-server", true);
 
     int rv = EXIT_SUCCESS;
     try
@@ -763,9 +776,11 @@ int main(int argc, char *argv[])
             app.requestShutdown();
             app.exec();
             rv = app.getReturnValue();
+            qDebug() << __func__ << ": Exit success";
         } else {
             // A dialog with detailed error will have been shown by InitError()
             rv = EXIT_FAILURE;
+            qDebug() << __func__ << ": Exit failure";
         }
     } catch (const std::exception& e) {
         PrintExceptionContinue(&e, "Runaway exception");
@@ -774,6 +789,7 @@ int main(int argc, char *argv[])
         PrintExceptionContinue(nullptr, "Runaway exception");
         app.handleRunawayException(QString::fromStdString(GetWarnings("gui")));
     }
+    qDebug() << __func__ << ": Final";
     return rv;
 }
 #endif // KOMODO_QT_TEST

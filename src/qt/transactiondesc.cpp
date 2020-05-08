@@ -1,6 +1,10 @@
-// Copyright (c) 2011-2016 The Komodo Core developers
+// Copyright (c) 2011-2016 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
+#if defined(HAVE_CONFIG_H)
+#include "config/komodo-config.h"
+#endif
 
 #include "transactiondesc.h"
 
@@ -17,6 +21,7 @@
 #include "main.h"
 #include "wallet/db.h"
 #include "wallet/wallet.h"
+#include "key_io.h"
 
 #include <stdint.h>
 #include <string>
@@ -248,6 +253,7 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx, TransactionReco
         if (r.first == "Message")
             strHTML += "<br><b>" + tr("Message") + ":</b><br>" + GUIUtil::HtmlEscape(r.second, true) + "<br>";
 
+    #ifdef ENABLE_BIP70
     //
     // PaymentRequest info:
     //
@@ -262,7 +268,8 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx, TransactionReco
                 strHTML += "<b>" + tr("Merchant") + ":</b> " + GUIUtil::HtmlEscape(merchant) + "<br>";
         }
     }
-
+    #endif
+    
     if (wtx.IsCoinBase())
     {
         quint32 numBlocksToMaturity = COINBASE_MATURITY +  1;

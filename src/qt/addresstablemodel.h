@@ -1,4 +1,4 @@
-// Copyright (c) 2011-2015 The Komodo Core developers
+// Copyright (c) 2011-2015 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -28,8 +28,9 @@ public:
     enum ColumnIndex {
         isMine = 0,
         isWatchOnly = 1,
-        Label = 2,   /**< User specified label */
-        Address = 3  /**< Komodo address */
+        Balance = 2,
+        Label = 3,   /**< User specified label */
+        Address = 4  /**< Komodo address */
     };
 
     enum RoleIndex {

@@ -1,0 +1,1 @@
+start ..\KomodoOceanGUI.exe -ac_name=EQL -ac_supply=500000000 -ac_ccactivate=205000 -addnode=46.101.124.153
